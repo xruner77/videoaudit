@@ -41,5 +41,11 @@
 		"navigationBarTitleText": "视频审片系统",
 		"navigationBarBackgroundColor": "#1a1a2e",
 		"backgroundColor": "#0f0f1a"
+	},
+	"easycom": {
+		"autoscan": true,
+		"custom": {
+			"^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+		}
 	}
 }

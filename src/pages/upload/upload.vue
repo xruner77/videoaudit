@@ -6,10 +6,10 @@
 			<!-- 上传方式切换 -->
 			<view class="tab-bar">
 				<text :class="['tab-item', uploadMode === 'local' && 'tab-active']" @click="uploadMode = 'local'">
-					📁 本地文件
+					<uni-icons type="folder" size="16" color="inherit" style="margin-right:8rpx;"/>本地文件
 				</text>
 				<text :class="['tab-item', uploadMode === 'remote' && 'tab-active']" @click="uploadMode = 'remote'">
-					🔗 远程链接
+					<uni-icons type="link" size="16" color="inherit" style="margin-right:8rpx;"/>远程链接
 				</text>
 			</view>
 
@@ -22,12 +22,12 @@
 
 				<view class="file-picker" @click="chooseVideo">
 					<view class="picker-content" v-if="!selectedFile">
-						<text class="picker-icon">📤</text>
+						<uni-icons type="cloud-upload" size="48" color="#888" />
 						<text class="picker-text">点击选择视频文件</text>
 						<text class="picker-hint">支持 mp4、webm 格式，最大 500MB</text>
 					</view>
 					<view class="picker-content picker-selected" v-else>
-						<text class="picker-icon">🎬</text>
+						<uni-icons type="videocam" size="48" color="#4caf50" />
 						<text class="picker-text">{{ selectedFile.name }}</text>
 						<text class="picker-hint">{{ formatSize(selectedFile.size) }}</text>
 					</view>

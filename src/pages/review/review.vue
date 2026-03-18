@@ -75,10 +75,12 @@
 			<!-- 视频信息展示区 -->
 			<view class="video-meta-section">
 				<text class="meta-title">{{ videoTitle }}</text>
-				<view class="meta-details">
-					<text class="meta-item" v-if="videoUploader">👤 {{ videoUploader }}</text>
-					<text class="meta-item" v-if="videoUploadDate">📅 {{ videoUploadDate }}</text>
-					<text class="meta-item">👁 {{ videoViews || 0 }} 次观看</text>
+				<view class="meta-subtitle">
+					<view class="meta-stats-left">
+						<text class="meta-user"><uni-icons type="person" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploader || '未知' }}</text>
+						<text class="meta-date"><uni-icons type="calendar" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploadDate }}</text>
+					</view>
+					<text class="meta-views"><uni-icons type="eye" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoViews }}</text>
 				</view>
 			</view>
 

@@ -2,21 +2,29 @@
 	<view class="header-bar">
 		<view class="header-left">
 			<view class="back-btn" v-if="showBack" @click="goBack">
-				<text class="back-icon">❮</text>
+				<uni-icons type="left" size="24" color="#fff" />
 			</view>
 			<text class="header-title">{{ title }}</text>
 		</view>
 		<view class="header-right" v-if="authStore.isLoggedIn">
-			<text class="header-user" @click="showMenu = !showMenu">{{ authStore.username }}</text>
+			<view class="header-user-wrapper" @click="showMenu = !showMenu">
+				<view class="user-avatar">
+					<uni-icons type="person-filled" size="16" color="#ffffff" />
+				</view>
+				<text class="header-user-name">{{ authStore.username }}</text>
+				<view class="dropdown-icon-wrapper" :class="{ 'rotate': showMenu }">
+					<uni-icons type="bottom" size="12" color="#a0a0b8" />
+				</view>
+			</view>
 			<view class="header-menu" v-if="showMenu">
 				<view class="menu-item" @click="goUpload">
-					<text>📤 上传视频</text>
+					<text><uni-icons type="cloud-upload" size="16" color="#fff" style="margin-right:8rpx;"/>上传视频</text>
 				</view>
 				<view class="menu-item" v-if="authStore.isAdmin" @click="goAdmin">
-					<text>⚙️ 后台管理</text>
+					<text><uni-icons type="gear" size="16" color="#fff" style="margin-right:8rpx;"/>后台管理</text>
 				</view>
 				<view class="menu-item menu-danger" @click="handleLogout">
-					<text>🚪 退出登录</text>
+					<text><uni-icons type="info" size="16" color="#ff4d4f" style="margin-right:8rpx;"/>退出登录</text>
 				</view>
 			</view>
 		</view>
@@ -109,15 +117,57 @@ function handleLogout() {
 
 .header-right {
 	position: relative;
+	display: flex;
+	align-items: center;
 }
 
-.header-user {
-	color: #a0a0b8;
+.header-user-wrapper {
+	display: flex;
+	align-items: center;
+	padding: 8rpx 16rpx 8rpx 8rpx;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 40rpx;
+	transition: all 0.3s ease;
+	cursor: pointer;
+}
+
+.header-user-wrapper:active {
+	background: rgba(255, 255, 255, 0.1);
+	transform: scale(0.98);
+}
+
+.user-avatar {
+	width: 48rpx;
+	height: 48rpx;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #6c5ce7, #a855f7);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 12rpx;
+	box-shadow: 0 4rpx 12rpx rgba(108, 92, 231, 0.3);
+}
+
+.header-user-name {
+	color: #ffffff;
 	font-size: 26rpx;
-	padding: 10rpx 20rpx;
-	background: rgba(108, 92, 231, 0.15);
-	border-radius: 20rpx;
-	border: 1px solid rgba(108, 92, 231, 0.3);
+	font-weight: 500;
+	margin-right: 8rpx;
+	max-width: 160rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dropdown-icon-wrapper {
+	display: flex;
+	align-items: center;
+	transition: transform 0.3s ease;
+}
+
+.dropdown-icon-wrapper.rotate {
+	transform: rotate(180deg);
 }
 
 .header-login-btn {

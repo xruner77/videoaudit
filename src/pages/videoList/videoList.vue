@@ -17,31 +17,31 @@
 					></video>
 					<view class="thumb-overlay"></view>
 					<view class="video-type-badge">
-						<text>💬 {{ video.comment_count !== undefined ? video.comment_count : 0 }}</text>
+						<text><uni-icons type="chat" size="12" color="#fff" style="margin-right:4rpx;"/>{{ video.comment_count !== undefined ? video.comment_count : 0 }}</text>
 					</view>
 				</view>
 				<view class="info-row">
 					<text class="video-title">{{ video.title }}</text>
 				</view>
 				<view class="video-meta">
-					<text class="meta-user">👤 {{ video.uploader || '未知' }}</text>
+					<text class="meta-user"><uni-icons type="person" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.uploader || '未知' }}</text>
 					<view class="meta-stats">
 						<text class="meta-date">{{ formatDate(video.created_at) }}</text>
-						<text class="meta-comments" v-if="video.views !== undefined">👁 {{ video.views }}</text>
-						<text class="meta-comments" v-else>👁 {{ (video.id * 89 + 123) % 900 + 100 }}</text>
+						<text class="meta-comments" v-if="video.views !== undefined"><uni-icons type="eye" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.views }}</text>
+						<text class="meta-comments" v-else><uni-icons type="eye" size="12" color="#aaa" />{{ (video.id * 89 + 123) % 900 + 100 }}</text>
 					</view>
 				</view>
 			</view>
 
 			<view class="empty-state" v-if="!loading && videos.length === 0">
-				<text class="empty-icon">📭</text>
+				<text class="empty-icon"><uni-icons type="info" size="48" color="#444"/></text>
 				<text class="empty-text">暂无视频</text>
 				<text class="empty-hint">点击右上角上传第一个视频</text>
 			</view>
 		</view>
 
 		<view class="fab" @click="goUpload" v-if="authStore.isLoggedIn">
-			<text class="fab-icon">＋</text>
+			<text class="fab-icon"><uni-icons type="plusempty" size="24" color="#fff"/></text>
 		</view>
 	</view>
 </template>
