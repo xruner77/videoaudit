@@ -5,4 +5,13 @@ export default defineConfig({
   plugins: [
     uni(),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://va.xruner.tk',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  }
 })

@@ -1,9 +1,10 @@
 <template>
 	<view class="page">
-		<Header title="上传视频" />
+		<Header title="上传视频" showBack />
 
 		<view class="upload-container">
-			<!-- 上传方式切换 -->
+			<view class="upload-box">
+				<!-- 上传方式切换 -->
 			<view class="tab-bar">
 				<text :class="['tab-item', uploadMode === 'local' && 'tab-active']" @click="uploadMode = 'local'">
 					<uni-icons type="folder" size="16" color="inherit" style="margin-right:8rpx;"/>本地文件
@@ -60,6 +61,7 @@
 				<button class="btn-primary submit-btn" @click="addRemote" :loading="uploading" :disabled="uploading">
 					添加视频
 				</button>
+			</view>
 			</view>
 
 			<!-- 我的视频 -->
@@ -312,6 +314,15 @@ function formatSize(bytes) {
 	padding: 24rpx;
 }
 
+.upload-box {
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 24rpx;
+	padding: 30rpx;
+	margin-bottom: 40rpx;
+	box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.25);
+}
+
 .tab-bar {
 	display: flex;
 	background: rgba(255, 255, 255, 0.04);
@@ -336,7 +347,7 @@ function formatSize(bytes) {
 }
 
 .upload-form {
-	margin-bottom: 40rpx;
+	margin-bottom: 10rpx;
 }
 
 .form-group {

@@ -9,11 +9,11 @@
 		<view class="header-right" v-if="authStore.isLoggedIn">
 			<view class="header-user-wrapper" @click="showMenu = !showMenu">
 				<view class="user-avatar">
-					<uni-icons type="person-filled" size="16" color="#ffffff" />
+					<uni-icons type="person-filled" size="14" color="#ffffff" />
 				</view>
 				<text class="header-user-name">{{ authStore.username }}</text>
 				<view class="dropdown-icon-wrapper" :class="{ 'rotate': showMenu }">
-					<uni-icons type="bottom" size="12" color="#a0a0b8" />
+					<uni-icons type="bars" size="14" color="#a0a0b8" />
 				</view>
 			</view>
 			<view class="header-menu" v-if="showMenu">
@@ -124,28 +124,24 @@ function handleLogout() {
 .header-user-wrapper {
 	display: flex;
 	align-items: center;
-	padding: 8rpx 16rpx 8rpx 8rpx;
-	background: rgba(255, 255, 255, 0.05);
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 40rpx;
+	padding: 10rpx 0rpx;
 	transition: all 0.3s ease;
 	cursor: pointer;
 }
 
 .header-user-wrapper:active {
-	background: rgba(255, 255, 255, 0.1);
-	transform: scale(0.98);
+	opacity: 0.8;
 }
 
 .user-avatar {
-	width: 48rpx;
-	height: 48rpx;
+	width: 36rpx;
+	height: 36rpx;
 	border-radius: 50%;
 	background: linear-gradient(135deg, #6c5ce7, #a855f7);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin-right: 12rpx;
+	margin-right: 10rpx;
 	box-shadow: 0 4rpx 12rpx rgba(108, 92, 231, 0.3);
 }
 
@@ -153,7 +149,7 @@ function handleLogout() {
 	color: #ffffff;
 	font-size: 26rpx;
 	font-weight: 500;
-	margin-right: 8rpx;
+	margin-right: 12rpx;
 	max-width: 160rpx;
 	overflow: hidden;
 	text-overflow: ellipsis;

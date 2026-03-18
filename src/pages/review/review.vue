@@ -59,14 +59,36 @@
 
 					<view class="controls-bottom">
 						<view class="controls-left">
-							<text class="ctrl-btn" @click="skip(-5)">⏪</text>
-							<text class="ctrl-btn ctrl-play" @click="togglePlay">{{ isPlaying ? '⏸' : '▶️' }}</text>
-							<text class="ctrl-btn" @click="skip(5)">⏩</text>
-							<text class="time-display">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</text>
+							<text class="time-current">{{ formatTime(currentTime) }}</text>
+							<text class="time-separator">/</text>
+							<text class="time-total">{{ formatTime(duration) }}</text>
+						</view>
+						<view class="controls-center">
+							<view class="skip-btn-circle" @click="skip(-5)">
+								<view class="skip-icon-rw">
+									<view class="triangle-left"></view>
+									<view class="triangle-left"></view>
+								</view>
+							</view>
+							<view class="play-btn-circle" @click="togglePlay">
+								<view class="pause-icon" v-if="isPlaying">
+									<view class="pause-bar"></view>
+									<view class="pause-bar"></view>
+								</view>
+								<view class="play-icon-css" v-else></view>
+							</view>
+							<view class="skip-btn-circle" @click="skip(5)">
+								<view class="skip-icon-ff">
+									<view class="triangle-right"></view>
+									<view class="triangle-right"></view>
+								</view>
+							</view>
 						</view>
 						<view class="controls-right">
-							<text class="ctrl-btn speed-btn" @click="cycleSpeed">{{ playbackRate }}x</text>
-							<text class="ctrl-btn" @click="toggleFullscreen">⛶</text>
+							<text class="speed-text" @click="cycleSpeed">{{ playbackRate }}倍</text>
+							<view class="ctrl-icon-btn" @click="toggleFullscreen">
+								<uni-icons type="scan" size="22" color="#d0d0e0" />
+							</view>
 						</view>
 					</view>
 				</view>
@@ -75,12 +97,10 @@
 			<!-- 视频信息展示区 -->
 			<view class="video-meta-section">
 				<text class="meta-title">{{ videoTitle }}</text>
-				<view class="meta-subtitle">
-					<view class="meta-stats-left">
-						<text class="meta-user"><uni-icons type="person" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploader || '未知' }}</text>
-						<text class="meta-date"><uni-icons type="calendar" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploadDate }}</text>
-					</view>
-					<text class="meta-views"><uni-icons type="eye" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoViews }}</text>
+				<view class="meta-details">
+					<text class="meta-item"><uni-icons type="person" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploader || '未知' }}</text>
+					<text class="meta-item"><uni-icons type="calendar" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploadDate }}</text>
+					<text class="meta-item"><uni-icons type="eye" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoViews }}</text>
 				</view>
 			</view>
 
@@ -108,16 +128,21 @@
 			<view class="comment-list">
 				<text class="section-title">审核意见 ({{ comments.length }})</text>
 
-				<view class="comment-item" v-for="c in comments" :key="c.id">
+				<view class="comment-item" v-for="c in comments" :key="c.id" @click="seekTo(c.timestamp)">
 					<view class="comment-header">
-						<text class="comment-user">{{ c.username }}</text>
-						<text class="comment-time-tag" @click="seekTo(c.timestamp)">
+						<view class="comment-user">
+							<view class="comment-avatar">
+								<uni-icons type="person-filled" size="18" color="#d0d0e0" />
+							</view>
+							<text class="comment-username">{{ c.username }}</text>
+						</view>
+						<text class="comment-time">
 							⏱ {{ formatTime(c.timestamp) }}
 						</text>
 					</view>
 					<text class="comment-content">{{ c.content }}</text>
 					<view class="comment-actions" v-if="canDeleteComment(c)">
-						<text class="delete-btn" @click="deleteComment(c.id)">删除</text>
+						<text class="delete-btn" @click.stop="deleteComment(c.id)">删除</text>
 					</view>
 				</view>
 
@@ -304,9 +329,10 @@ function skip(seconds) {
 }
 
 function seekTo(time) {
-	if (!videoContext) return
-	videoContext.seek(time)
-	videoContext.play()
+	if (videoContext && time >= 0) {
+		videoContext.seek(time)
+		videoContext.pause()
+	}
 }
 
 function cycleSpeed() {
@@ -315,6 +341,12 @@ function cycleSpeed() {
 	playbackRate.value = speeds[nextIndex]
 	if (videoContext) {
 		videoContext.playbackRate(playbackRate.value)
+	}
+}
+
+function toggleFullscreen() {
+	if (videoContext) {
+		videoContext.requestFullScreen()
 	}
 }
 
@@ -467,14 +499,17 @@ function formatTime(seconds) {
 }
 
 .review-container {
-	padding-bottom: 40rpx;
+	padding-bottom: 200rpx;
 }
 
 /* 播放器 */
 .player-section {
-	position: relative;
+	position: sticky;
+	top: 88rpx;
+	z-index: 99;
 	background: #000;
 	margin-bottom: 24rpx;
+	box-shadow: 0 12rpx 30rpx rgba(0,0,0,0.6);
 }
 
 .video-wrapper {
@@ -590,35 +625,149 @@ function formatTime(seconds) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	height: 80rpx;
+	padding: 0 10rpx;
 }
 
-.controls-left, .controls-right {
+.controls-left {
+	flex: 1;
 	display: flex;
 	align-items: center;
-	gap: 16rpx;
 }
 
-.ctrl-btn {
-	font-size: 32rpx;
-	color: #fff;
-	padding: 6rpx;
-}
-
-.ctrl-play {
-	font-size: 40rpx;
-}
-
-.time-display {
-	font-size: 22rpx;
-	color: rgba(255, 255, 255, 0.7);
+.time-current {
+	font-size: 26rpx;
+	color: #ffffff;
 	font-variant-numeric: tabular-nums;
 }
 
-.speed-btn {
+.time-separator {
 	font-size: 24rpx;
-	background: rgba(255, 255, 255, 0.15);
-	padding: 4rpx 16rpx;
-	border-radius: 8rpx;
+	color: #888899;
+	margin: 0 4rpx;
+}
+
+.time-total {
+	font-size: 26rpx;
+	color: #888899;
+	font-variant-numeric: tabular-nums;
+}
+
+.controls-center {
+	display: flex;
+	align-items: center;
+	gap: 40rpx;
+}
+
+.ctrl-icon-btn {
+	padding: 10rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ctrl-icon-btn:active {
+	opacity: 0.7;
+}
+
+.skip-btn-circle {
+	width: 70rpx;
+	height: 70rpx;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.06);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.2s, transform 0.1s;
+}
+
+.skip-btn-circle:active {
+	background: rgba(255, 255, 255, 0.4);
+	transform: scale(0.95);
+}
+
+/* CSS rendered generic icons */
+.triangle-right {
+	width: 0;
+	height: 0;
+	border-top: 14rpx solid transparent;
+	border-bottom: 14rpx solid transparent;
+	border-left: 18rpx solid #ffffff;
+}
+
+.triangle-left {
+	width: 0;
+	height: 0;
+	border-top: 14rpx solid transparent;
+	border-bottom: 14rpx solid transparent;
+	border-right: 18rpx solid #ffffff;
+}
+
+.skip-icon-ff, .skip-icon-rw {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2rpx;
+}
+.skip-icon-ff {
+	margin-left: 4rpx;
+}
+.skip-icon-rw {
+	margin-right: 4rpx;
+}
+
+.play-btn-circle {
+	width: 90rpx;
+	height: 90rpx;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.12);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.2s;
+}
+
+.play-btn-circle:active {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.pause-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12rpx;
+	width: 100%;
+	height: 100%;
+}
+
+.pause-bar {
+	width: 8rpx;
+	height: 36rpx;
+	background-color: #ffffff;
+	border-radius: 4rpx;
+}
+
+.play-icon-css {
+	width: 0;
+	height: 0;
+	border-top: 20rpx solid transparent;
+	border-bottom: 20rpx solid transparent;
+	border-left: 28rpx solid #ffffff;
+	margin-left: 8rpx; /* Optical center for a right-pointing triangle */
+}
+
+.controls-right {
+	flex: 1;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 30rpx;
+}
+
+.speed-text {
+	font-size: 26rpx;
+	color: #e2e2ea;
+	cursor: pointer;
 }
 
 /* 视频元信息 */
@@ -652,8 +801,16 @@ function formatTime(seconds) {
 
 /* 评论输入 */
 .comment-input-section {
-	padding: 20rpx 24rpx;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	box-sizing: border-box;
+	background: rgba(15, 15, 26, 0.95);
+	backdrop-filter: blur(10px);
+	padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	z-index: 100;
 }
 
 .input-row {
@@ -682,7 +839,16 @@ function formatTime(seconds) {
 }
 
 .login-hint {
-	padding: 24rpx;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	box-sizing: border-box;
+	background: rgba(15, 15, 26, 0.95);
+	backdrop-filter: blur(10px);
+	padding: 30rpx 24rpx calc(30rpx + env(safe-area-inset-bottom));
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	z-index: 100;
 	text-align: center;
 }
 
@@ -716,28 +882,45 @@ function formatTime(seconds) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 10rpx;
+	margin-bottom: 20rpx;
 }
 
 .comment-user {
-	font-size: 24rpx;
-	color: #a0a0b8;
-	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
 }
 
-.comment-time-tag {
-	font-size: 22rpx;
-	color: #f39c12;
-	background: rgba(243, 156, 18, 0.1);
-	padding: 4rpx 14rpx;
-	border-radius: 10rpx;
+.comment-avatar {
+	width: 52rpx;
+	height: 52rpx;
+	border-radius: 50%;
+	background: #3d3d52;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.comment-username {
+	font-size: 30rpx;
+	color: #a0a0b8;
+	font-weight: 500;
+}
+
+.comment-time {
+	font-size: 28rpx;
+	color: #f39c12; /* Distinct color for timestamp */
+	background: rgba(243, 156, 18, 0.15);
+	padding: 6rpx 16rpx;
+	border-radius: 8rpx;
+	font-variant-numeric: tabular-nums;
 }
 
 .comment-content {
-	font-size: 28rpx;
-	color: #d0d0e0;
+	font-size: 32rpx;
+	color: #ffffff;
 	line-height: 1.6;
-	display: block;
+	word-break: break-all;
 }
 
 .comment-actions {
