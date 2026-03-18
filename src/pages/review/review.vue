@@ -15,11 +15,17 @@
 						playsinline
 						webkit-playsinline
 						@timeupdate="onTimeUpdate"
-						@play="isPlaying = true"
-						@pause="isPlaying = false"
-						@ended="isPlaying = false"
+						@play="onPlay"
+						@pause="isPlaying = false; isLoading = false"
+						@ended="isPlaying = false; isLoading = false"
 						@loadedmetadata="onMetaLoaded"
 					></video>
+					
+					<!-- 缓冲 Loading 动画 -->
+					<view class="loading-overlay" v-show="isLoading">
+						<view class="loading-spinner"></view>
+					</view>
+					
 					<!-- 居中播放按钮 -->
 					<view class="center-play-btn" v-show="!isPlaying">
 						<text class="center-play-icon">▶</text>
@@ -30,8 +36,13 @@
 				<view class="controls">
 					<view class="controls-top">
 						<!-- 进度条 -->
-						<view class="progress-bar" @touchstart="onProgressTouch" @click="onProgressClick">
-							<view class="progress-track" id="progressTrack">
+						<view 
+						class="progress-bar" 
+						@touchstart.prevent="onProgressTouchStart"
+						@touchmove.prevent="onProgressTouchMove"
+						@touchend.prevent="onProgressTouchEnd"
+						@click="onProgressClick"
+					>		<view class="progress-track" id="progressTrack">
 								<view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
 								<view class="progress-thumb" :style="{ left: progressPercent + '%' }"></view>
 								<!-- 评论打点 -->
@@ -117,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, getCurrentInstance } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
@@ -131,6 +142,9 @@ const videoUploader = ref('')
 const videoUploadDate = ref('')
 const videoViews = ref(0)
 const isPlaying = ref(false)
+const isLoading = ref(false)
+let bufferTimer = null
+let lastTimeUpdateTs = 0
 const currentTime = ref(0)
 const duration = ref(0)
 const playbackRate = ref(1)
@@ -167,7 +181,13 @@ onUnmounted(() => {
 		videoContext.pause()
 		videoContext = null
 	}
+	if (bufferTimer) {
+		clearInterval(bufferTimer)
+		bufferTimer = null
+	}
 })
+
+const instance = getCurrentInstance()
 
 async function fetchVideoDetail() {
 	try {
@@ -225,15 +245,45 @@ async function fetchComments() {
 	}
 }
 
+function onPlay() {
+	isPlaying.value = true
+	isLoading.value = false
+	startBufferCheck()
+}
+
 function onTimeUpdate(e) {
+	// 如果用户正在拖动进度条，不要让视频实际播放进度覆盖拖动进度
+	if (isDragging.value) return
 	currentTime.value = e.detail.currentTime
 	duration.value = e.detail.duration
+	// 收到 timeupdate 说明在正常播放，关闭 loading
+	lastTimeUpdateTs = Date.now()
+	if (isLoading.value) {
+		isLoading.value = false
+	}
 }
 
 function onMetaLoaded(e) {
 	if (e.detail && e.detail.duration) {
 		duration.value = e.detail.duration
 	}
+	isLoading.value = false
+}
+
+function startBufferCheck() {
+	if (bufferTimer) clearInterval(bufferTimer)
+	lastTimeUpdateTs = Date.now()
+	bufferTimer = setInterval(() => {
+		// 如果正在播放但超过800ms没收到timeupdate，说明在缓冲
+		if (isPlaying.value && Date.now() - lastTimeUpdateTs > 800) {
+			isLoading.value = true
+		}
+		// 如果不在播放状态，停止检测
+		if (!isPlaying.value) {
+			clearInterval(bufferTimer)
+			bufferTimer = null
+		}
+	}, 500)
 }
 
 function togglePlay() {
@@ -266,37 +316,61 @@ function cycleSpeed() {
 	}
 }
 
-function toggleFullscreen() {
-	if (videoContext) {
-		videoContext.requestFullScreen({ direction: 0 })
-	}
+// --- 进度条手势控制 ---
+const isDragging = ref(false)
+
+function onProgressTouchStart(e) {
+	if (!duration.value) return
+	isDragging.value = true
+	updateProgressByEvent(e)
 }
 
-function extractClientX(e) {
-	if (e.clientX !== undefined) return e.clientX;
-	if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
-	if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
-	if (e.detail && e.detail.clientX !== undefined) return e.detail.clientX;
-	if (e.detail && e.detail.x !== undefined) return e.detail.x;
-	return 0;
+function onProgressTouchMove(e) {
+	if (!duration.value || !isDragging.value) return
+	updateProgressByEvent(e)
+}
+
+function onProgressTouchEnd(e) {
+	if (!duration.value) return
+	isDragging.value = false
+	updateProgressByEvent(e, true)
 }
 
 function onProgressClick(e) {
-	if (duration.value <= 0) return
-	const el = document.getElementById('progressTrack')
-	if (!el) return
-	const rect = el.getBoundingClientRect()
-	
-	const clientX = extractClientX(e)
-	if (!clientX) return
-
-	const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-	const targetTime = percent * duration.value
-	seekTo(targetTime)
+	if (!duration.value) return
+	updateProgressByEvent(e, true)
 }
 
-function onProgressTouch(e) {
-	onProgressClick(e)
+function updateProgressByEvent(e, shouldSeek = false) {
+	let clientX = 0
+	
+	if (e.touches && e.touches.length > 0) {
+		clientX = e.touches[0].clientX
+	} else if (e.changedTouches && e.changedTouches.length > 0) {
+		clientX = e.changedTouches[0].clientX
+	} else if (e.clientX !== undefined) {
+		clientX = e.clientX
+	} else {
+		return
+	}
+
+	const query = uni.createSelectorQuery().in(instance.proxy)
+	query.select('.progress-bar').boundingClientRect(data => {
+		if (data) {
+			let x = clientX - data.left
+			x = Math.max(0, Math.min(x, data.width))
+			const ratio = x / data.width
+			const targetTime = ratio * duration.value
+			
+			// 拖动过程中仅更新 UI
+			currentTime.value = targetTime
+			
+			// 只有在拖动结束或点击时，才真正调用 API 执行 seek
+			if (shouldSeek && videoContext) {
+				videoContext.seek(targetTime)
+			}
+		}
+	}).exec()
 }
 
 function pauseForComment() {
@@ -410,6 +484,32 @@ function formatTime(seconds) {
 	width: 100%;
 	height: 420rpx;
 	display: block;
+}
+
+.loading-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.loading-spinner {
+	width: 80rpx;
+	height: 80rpx;
+	border: 6rpx solid rgba(255, 255, 255, 0.3);
+	border-radius: 50%;
+	border-top-color: #fff;
+	animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
 }
 
 .center-play-btn {
