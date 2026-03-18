@@ -1,0 +1,660 @@
+<template>
+	<view class="page">
+		<Header title="审片" showBack />
+
+		<view class="review-container">
+			<!-- 视频播放器区域 -->
+			<view class="player-section">
+				<view class="video-wrapper" @click="togglePlay">
+					<video
+						id="reviewVideo"
+						class="video-player"
+						:src="videoUrl"
+						:controls="false"
+						:show-center-play-btn="false"
+						playsinline
+						webkit-playsinline
+						@timeupdate="onTimeUpdate"
+						@play="isPlaying = true"
+						@pause="isPlaying = false"
+						@ended="isPlaying = false"
+						@loadedmetadata="onMetaLoaded"
+					></video>
+					<!-- 居中播放按钮 -->
+					<view class="center-play-btn" v-show="!isPlaying">
+						<text class="center-play-icon">▶</text>
+					</view>
+				</view>
+
+				<!-- 自定义控制条 -->
+				<view class="controls">
+					<view class="controls-top">
+						<!-- 进度条 -->
+						<view class="progress-bar" @touchstart="onProgressTouch" @click="onProgressClick">
+							<view class="progress-track" id="progressTrack">
+								<view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
+								<view class="progress-thumb" :style="{ left: progressPercent + '%' }"></view>
+								<!-- 评论打点 -->
+								<view
+									class="comment-dot"
+									v-for="dot in commentDots"
+									:key="dot.time"
+									:style="{ left: dot.percent + '%' }"
+									@click.stop="seekTo(dot.time)"
+								></view>
+							</view>
+						</view>
+					</view>
+
+					<view class="controls-bottom">
+						<view class="controls-left">
+							<text class="ctrl-btn" @click="skip(-5)">⏪</text>
+							<text class="ctrl-btn ctrl-play" @click="togglePlay">{{ isPlaying ? '⏸' : '▶️' }}</text>
+							<text class="ctrl-btn" @click="skip(5)">⏩</text>
+							<text class="time-display">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</text>
+						</view>
+						<view class="controls-right">
+							<text class="ctrl-btn speed-btn" @click="cycleSpeed">{{ playbackRate }}x</text>
+							<text class="ctrl-btn" @click="toggleFullscreen">⛶</text>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<!-- 视频信息展示区 -->
+			<view class="video-meta-section">
+				<text class="meta-title">{{ videoTitle }}</text>
+				<view class="meta-details">
+					<text class="meta-item" v-if="videoUploader">👤 {{ videoUploader }}</text>
+					<text class="meta-item" v-if="videoUploadDate">📅 {{ videoUploadDate }}</text>
+					<text class="meta-item">👁 {{ videoViews || 0 }} 次观看</text>
+				</view>
+			</view>
+
+			<!-- 评论输入 -->
+			<view class="comment-input-section" v-if="authStore.isLoggedIn">
+				<view class="input-row">
+					<input
+						class="dark-input comment-text-input"
+						v-model="commentText"
+						placeholder="输入审核意见..."
+						@focus="pauseForComment"
+						maxlength="500"
+					/>
+					<button class="btn-primary send-btn" @click="submitComment" :loading="submitting">发送</button>
+				</view>
+				<text class="input-hint" v-if="commentTimestamp >= 0">
+					📍 将标记在 {{ formatTime(commentTimestamp) }}
+				</text>
+			</view>
+			<view class="login-hint" v-else>
+				<text @click="goLogin">请先登录后发表评论 →</text>
+			</view>
+
+			<!-- 评论列表 -->
+			<view class="comment-list">
+				<text class="section-title">审核意见 ({{ comments.length }})</text>
+
+				<view class="comment-item" v-for="c in comments" :key="c.id">
+					<view class="comment-header">
+						<text class="comment-user">{{ c.username }}</text>
+						<text class="comment-time-tag" @click="seekTo(c.timestamp)">
+							⏱ {{ formatTime(c.timestamp) }}
+						</text>
+					</view>
+					<text class="comment-content">{{ c.content }}</text>
+					<view class="comment-actions" v-if="canDeleteComment(c)">
+						<text class="delete-btn" @click="deleteComment(c.id)">删除</text>
+					</view>
+				</view>
+
+				<view class="empty-comments" v-if="comments.length === 0">
+					<text>暂无审核意见</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup>
+import { ref, computed, onUnmounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import Header from '../../components/Header.vue'
+import { useAuthStore } from '../../stores/authStore'
+
+const authStore = useAuthStore()
+
+const videoId = ref(0)
+const videoUrl = ref('')
+const videoTitle = ref('')
+const videoUploader = ref('')
+const videoUploadDate = ref('')
+const videoViews = ref(0)
+const isPlaying = ref(false)
+const currentTime = ref(0)
+const duration = ref(0)
+const playbackRate = ref(1)
+const commentText = ref('')
+const commentTimestamp = ref(-1)
+const submitting = ref(false)
+const comments = ref([])
+let videoContext = null
+
+const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
+const progressPercent = computed(() => {
+	if (duration.value <= 0) return 0
+	return (currentTime.value / duration.value) * 100
+})
+
+const commentDots = computed(() => {
+	if (duration.value <= 0) return []
+	return comments.value.map(c => ({
+		time: c.timestamp,
+		percent: (c.timestamp / duration.value) * 100
+	}))
+})
+
+onLoad((options) => {
+	videoId.value = parseInt(options.id)
+	fetchVideoDetail()
+	fetchComments()
+	videoContext = uni.createVideoContext('reviewVideo')
+})
+
+onUnmounted(() => {
+	if (videoContext) {
+		videoContext.pause()
+		videoContext = null
+	}
+})
+
+async function fetchVideoDetail() {
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/videos`,
+			method: 'GET'
+		})
+		if (res.statusCode === 200) {
+			const video = (res.data.videos || []).find(v => v.id == videoId.value)
+			if (video) {
+				videoTitle.value = video.title
+				videoUploader.value = video.uploader || '未知'
+				
+				// 格式化日期
+				if (video.created_at) {
+					const d = new Date(video.created_at)
+					videoUploadDate.value = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
+				}
+				
+				// 真实观看次数
+				videoViews.value = video.views || 0
+
+				// 本地视频需要拼接后端地址
+				videoUrl.value = video.type === 'local'
+					? `${authStore.API_BASE}${video.url}`
+					: video.url
+					
+				// 增加播放量
+				incrementViewCount(video.id)
+			}
+		}
+	} catch (e) {
+		console.error('Failed to fetch video:', e)
+	}
+}
+
+function incrementViewCount(id) {
+	uni.request({
+		url: `${authStore.API_BASE}/api/videos/${id}/view`,
+		method: 'POST'
+	})
+}
+
+async function fetchComments() {
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
+			method: 'GET'
+		})
+		if (res.statusCode === 200) {
+			comments.value = res.data.comments || []
+		}
+	} catch (e) {
+		console.error('Failed to fetch comments:', e)
+	}
+}
+
+function onTimeUpdate(e) {
+	currentTime.value = e.detail.currentTime
+	duration.value = e.detail.duration
+}
+
+function onMetaLoaded(e) {
+	if (e.detail && e.detail.duration) {
+		duration.value = e.detail.duration
+	}
+}
+
+function togglePlay() {
+	if (!videoContext) return
+	if (isPlaying.value) {
+		videoContext.pause()
+	} else {
+		videoContext.play()
+	}
+}
+
+function skip(seconds) {
+	if (!videoContext) return
+	const newTime = Math.max(0, Math.min(currentTime.value + seconds, duration.value))
+	videoContext.seek(newTime)
+}
+
+function seekTo(time) {
+	if (!videoContext) return
+	videoContext.seek(time)
+	videoContext.play()
+}
+
+function cycleSpeed() {
+	const currentIndex = speeds.indexOf(playbackRate.value)
+	const nextIndex = (currentIndex + 1) % speeds.length
+	playbackRate.value = speeds[nextIndex]
+	if (videoContext) {
+		videoContext.playbackRate(playbackRate.value)
+	}
+}
+
+function toggleFullscreen() {
+	if (videoContext) {
+		videoContext.requestFullScreen({ direction: 0 })
+	}
+}
+
+function extractClientX(e) {
+	if (e.clientX !== undefined) return e.clientX;
+	if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
+	if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
+	if (e.detail && e.detail.clientX !== undefined) return e.detail.clientX;
+	if (e.detail && e.detail.x !== undefined) return e.detail.x;
+	return 0;
+}
+
+function onProgressClick(e) {
+	if (duration.value <= 0) return
+	const el = document.getElementById('progressTrack')
+	if (!el) return
+	const rect = el.getBoundingClientRect()
+	
+	const clientX = extractClientX(e)
+	if (!clientX) return
+
+	const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+	const targetTime = percent * duration.value
+	seekTo(targetTime)
+}
+
+function onProgressTouch(e) {
+	onProgressClick(e)
+}
+
+function pauseForComment() {
+	if (videoContext && isPlaying.value) {
+		videoContext.pause()
+	}
+	commentTimestamp.value = currentTime.value
+}
+
+async function submitComment() {
+	if (!commentText.value.trim()) {
+		return uni.showToast({ title: '请输入评论内容', icon: 'none' })
+	}
+
+	submitting.value = true
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/comments`,
+			method: 'POST',
+			header: {
+				'Content-Type': 'application/json',
+				...authStore.getAuthHeader()
+			},
+			data: {
+				video_id: videoId.value,
+				content: commentText.value.trim(),
+				timestamp: commentTimestamp.value >= 0 ? commentTimestamp.value : currentTime.value
+			}
+		})
+
+		if (res.statusCode === 201) {
+			uni.showToast({ title: '评论成功', icon: 'success' })
+			commentText.value = ''
+			commentTimestamp.value = -1
+			fetchComments()
+		} else {
+			throw new Error(res.data?.error || '评论失败')
+		}
+	} catch (e) {
+		uni.showToast({ title: e.message || '评论失败', icon: 'none' })
+	} finally {
+		submitting.value = false
+	}
+}
+
+function canDeleteComment(comment) {
+	if (!authStore.isLoggedIn) return false
+	return authStore.isAdmin || comment.user_id == authStore.user?.id
+}
+
+async function deleteComment(commentId) {
+	uni.showModal({
+		title: '确认删除',
+		content: '确定要删除这条评论吗？',
+		success: async (res) => {
+			if (!res.confirm) return
+			try {
+				const resp = await uni.request({
+					url: `${authStore.API_BASE}/api/comments/${commentId}`,
+					method: 'DELETE',
+					header: authStore.getAuthHeader()
+				})
+				if (resp.statusCode === 200) {
+					uni.showToast({ title: '已删除', icon: 'success' })
+					fetchComments()
+				} else {
+					throw new Error(resp.data?.error || '删除失败')
+				}
+			} catch (e) {
+				uni.showToast({ title: e.message, icon: 'none' })
+			}
+		}
+	})
+}
+
+function goLogin() {
+	uni.navigateTo({ url: '/pages/login/login' })
+}
+
+function formatTime(seconds) {
+	if (!seconds || seconds < 0) return '0:00'
+	const m = Math.floor(seconds / 60)
+	const s = Math.floor(seconds % 60)
+	return `${m}:${s.toString().padStart(2, '0')}`
+}
+</script>
+
+<style scoped>
+.page {
+	min-height: 100vh;
+	background: #0f0f1a;
+}
+
+.review-container {
+	padding-bottom: 40rpx;
+}
+
+/* 播放器 */
+.player-section {
+	position: relative;
+	background: #000;
+	margin-bottom: 24rpx;
+}
+
+.video-wrapper {
+	position: relative;
+	cursor: pointer;
+}
+
+.video-player {
+	width: 100%;
+	height: 420rpx;
+	display: block;
+}
+
+.center-play-btn {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 100rpx;
+	height: 100rpx;
+	border-radius: 50%;
+	background: rgba(108, 92, 231, 0.8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.5);
+	pointer-events: none;
+}
+
+.center-play-icon {
+	font-size: 44rpx;
+	color: #fff;
+	margin-left: 6rpx;
+}
+
+.controls {
+	padding: 12rpx 20rpx 16rpx;
+	background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.3));
+}
+
+.controls-top {
+	margin-bottom: 12rpx;
+}
+
+.progress-bar {
+	padding: 16rpx 0;
+	cursor: pointer;
+}
+
+.progress-track {
+	height: 6rpx;
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 3rpx;
+	position: relative;
+}
+
+.progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #6c5ce7, #a855f7);
+	border-radius: 3rpx;
+	transition: width 0.1s linear;
+}
+
+.progress-thumb {
+	position: absolute;
+	top: 50%;
+	width: 20rpx;
+	height: 20rpx;
+	border-radius: 50%;
+	background: #a855f7;
+	transform: translate(-50%, -50%);
+	box-shadow: 0 0 8rpx rgba(168, 85, 247, 0.6);
+}
+
+.comment-dot {
+	position: absolute;
+	top: -4rpx;
+	width: 14rpx;
+	height: 14rpx;
+	border-radius: 50%;
+	background: #f39c12;
+	transform: translateX(-50%);
+	box-shadow: 0 0 8rpx rgba(243, 156, 18, 0.6);
+}
+
+.controls-bottom {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.controls-left, .controls-right {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.ctrl-btn {
+	font-size: 32rpx;
+	color: #fff;
+	padding: 6rpx;
+}
+
+.ctrl-play {
+	font-size: 40rpx;
+}
+
+.time-display {
+	font-size: 22rpx;
+	color: rgba(255, 255, 255, 0.7);
+	font-variant-numeric: tabular-nums;
+}
+
+.speed-btn {
+	font-size: 24rpx;
+	background: rgba(255, 255, 255, 0.15);
+	padding: 4rpx 16rpx;
+	border-radius: 8rpx;
+}
+
+/* 视频元信息 */
+.video-meta-section {
+	padding: 0 24rpx 40rpx 24rpx;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	margin-bottom: 40rpx;
+}
+
+.meta-title {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #fff;
+	display: block;
+	margin-bottom: 20rpx;
+}
+
+.meta-details {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 30rpx;
+}
+
+.meta-item {
+	font-size: 24rpx;
+	color: #888;
+	display: flex;
+	align-items: center;
+}
+
+/* 评论输入 */
+.comment-input-section {
+	padding: 20rpx 24rpx;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.input-row {
+	display: flex;
+	gap: 16rpx;
+	align-items: center;
+}
+
+.comment-text-input {
+	flex: 1;
+}
+
+.send-btn {
+	width: 140rpx;
+	height: 72rpx;
+	line-height: 72rpx;
+	padding: 0;
+	font-size: 28rpx;
+}
+
+.input-hint {
+	font-size: 22rpx;
+	color: #f39c12;
+	margin-top: 10rpx;
+	display: block;
+}
+
+.login-hint {
+	padding: 24rpx;
+	text-align: center;
+}
+
+.login-hint text {
+	color: #6c5ce7;
+	font-size: 26rpx;
+}
+
+/* 评论列表 */
+.comment-list {
+	padding: 24rpx;
+}
+
+.section-title {
+	font-size: 30rpx;
+	font-weight: 700;
+	color: #c0c0d0;
+	margin-bottom: 20rpx;
+	display: block;
+}
+
+.comment-item {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin-bottom: 16rpx;
+}
+
+.comment-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 10rpx;
+}
+
+.comment-user {
+	font-size: 24rpx;
+	color: #a0a0b8;
+	font-weight: 600;
+}
+
+.comment-time-tag {
+	font-size: 22rpx;
+	color: #f39c12;
+	background: rgba(243, 156, 18, 0.1);
+	padding: 4rpx 14rpx;
+	border-radius: 10rpx;
+}
+
+.comment-content {
+	font-size: 28rpx;
+	color: #d0d0e0;
+	line-height: 1.6;
+	display: block;
+}
+
+.comment-actions {
+	margin-top: 12rpx;
+	text-align: right;
+}
+
+.delete-btn {
+	font-size: 22rpx;
+	color: #e74c3c;
+}
+
+.empty-comments {
+	text-align: center;
+	padding: 40rpx;
+}
+
+.empty-comments text {
+	color: #555;
+	font-size: 26rpx;
+}
+</style>
