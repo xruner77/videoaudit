@@ -48,10 +48,30 @@
 				"navigationBarTitleText": "后台管理",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/profile/myVideos",
+			"style": {
+				"navigationBarTitleText": "我的视频",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile/myCommentsList",
+			"style": {
+				"navigationBarTitleText": "我的评论",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile/changePassword",
+			"style": {
+				"navigationBarTitleText": "修改密码",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"tabBar": {
-		"custom": true,
 		"color": "#666",
 		"selectedColor": "#a855f7",
 		"backgroundColor": "#1a1a2e",

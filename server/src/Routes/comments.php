@@ -24,10 +24,11 @@ return function (App $app, PDO $db) {
         $userId = (int) $args['userId'];
 
         $stmt = $db->prepare('
-            SELECT c.*, u.username, v.title as video_title
+            SELECT c.*, u.username, v.title as video_title, v.created_at as video_created_at, uv.username as uploader
             FROM comments c
             LEFT JOIN users u ON c.user_id = u.id
             LEFT JOIN videos v ON c.video_id = v.id
+            LEFT JOIN users uv ON v.user_id = uv.id
             WHERE c.user_id = ?
             ORDER BY c.created_at DESC
         ');

@@ -1,5 +1,5 @@
 <template>
-	<view class="page">
+	<view class="page-container">
 		<Header title="上传视频" showBack />
 
 		<view class="upload-container">
@@ -263,10 +263,6 @@ function formatSize(bytes) {
 </script>
 
 <style scoped>
-.page {
-	min-height: 100vh;
-	background: #0f0f1a;
-}
 
 .upload-container {
 	padding: 24rpx;

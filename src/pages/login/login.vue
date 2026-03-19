@@ -139,10 +139,7 @@ async function handleSubmit() {
 
 .logo-title {
 	font-size: 44rpx;
-	font-weight: 800;
-	background: linear-gradient(135deg, #6c5ce7, #a855f7, #e879f9);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
+	color: #fff;
 	display: block;
 }
 

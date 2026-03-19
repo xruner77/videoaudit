@@ -28,9 +28,34 @@
 				</view>
 			</view>
 
+			<!-- 数据统计入口 -->
+			<view class="stat-grid">
+				<view class="stat-card" @click="goMyVideos">
+					<text class="stat-number">{{ myVideos.length }}</text>
+					<view class="stat-label-row">
+						<uni-icons type="videocam" size="14" color="#888" style="margin-right:6rpx;" />
+						<text class="stat-label">我的视频</text>
+					</view>
+				</view>
+				<view class="stat-card" @click="goMyComments">
+					<text class="stat-number">{{ myComments.length }}</text>
+					<view class="stat-label-row">
+						<uni-icons type="chat" size="14" color="#888" style="margin-right:6rpx;" />
+						<text class="stat-label">我的评论</text>
+					</view>
+				</view>
+			</view>
+
 			<!-- 功能菜单 -->
 			<view class="menu-section">
 				<view class="menu-card">
+					<view class="menu-item" @click="goUpload" v-if="authStore.isLoggedIn">
+						<view class="menu-icon-wrapper" style="background: rgba(108, 92, 231, 0.15);">
+							<uni-icons type="cloud-upload" size="20" color="#6c5ce7" />
+						</view>
+						<text class="menu-label">上传视频</text>
+						<uni-icons type="right" size="16" color="#555" />
+					</view>
 					<view class="menu-item" @click="goAdmin" v-if="authStore.isAdmin">
 						<view class="menu-icon-wrapper" style="background: rgba(52, 152, 219, 0.15);">
 							<uni-icons type="gear" size="20" color="#3498db" />
@@ -38,7 +63,7 @@
 						<text class="menu-label">后台管理</text>
 						<uni-icons type="right" size="16" color="#555" />
 					</view>
-					<view class="menu-item" @click="showPasswordModal = true">
+					<view class="menu-item" @click="goPasswordChange">
 						<view class="menu-icon-wrapper" style="background: rgba(46, 204, 113, 0.15);">
 							<uni-icons type="locked" size="20" color="#2ecc71" />
 						</view>
@@ -48,103 +73,9 @@
 				</view>
 			</view>
 
-			<!-- 我的视频 -->
-			<view class="section">
-				<view class="section-header">
-					<text class="section-title">我的视频 ({{ myVideos.length }} 个)</text>
-				</view>
-
-				<view class="video-group-card" v-for="v in myVideos" :key="v.id">
-					<view class="video-item-content" @click="goReview(v.id)">
-						<view class="video-item-main">
-							<text class="video-item-title">{{ v.title }}</text>
-							<view class="video-item-tags">
-								<text class="tag-type">{{ v.type === 'local' ? '📁 本地' : '🔗 远程' }}</text>
-								<text class="tag-date">{{ formatDate(v.created_at) }}</text>
-							</view>
-						</view>
-						<view class="video-item-actions">
-							<text class="delete-btn-text" @click.stop="deleteVideo(v.id)">删除</text>
-							<uni-icons type="right" size="16" color="#555" />
-						</view>
-					</view>
-				</view>
-
-				<view class="empty-state" v-if="!loadingVideos && myVideos.length === 0">
-					<uni-icons type="videocam" size="40" color="#444" />
-					<text class="empty-text">暂无上传的视频</text>
-				</view>
-			</view>
-
-			<!-- 我的评论 -->
-			<view class="section">
-				<view class="section-header">
-					<text class="section-title">我的评论 (共 {{ myComments.length }} 条，涉及 {{ groupedComments.length }} 个视频)</text>
-				</view>
-
-				<view class="comment-group-card" v-for="group in groupedComments" :key="group.video_id" @click="goToMyComments(group.video_id)">
-					<view class="group-info">
-						<text class="group-video-title">{{ group.video_title || '未知视频' }}</text>
-						<view class="group-stats">
-							<text class="group-count"><uni-icons type="chat" size="14" color="#a855f7" style="margin-right:6rpx;"/>{{ group.comments.length }} 条评论</text>
-							<uni-icons type="right" size="16" color="#555" />
-						</view>
-					</view>
-				</view>
-
-				<view class="empty-state" v-if="!loadingComments && groupedComments.length === 0">
-					<uni-icons type="chat" size="40" color="#444" />
-					<text class="empty-text">暂无评论</text>
-				</view>
-			</view>
-
 			<!-- 退出登录 -->
 			<view class="logout-section">
 				<button class="logout-btn" @click="handleLogout">退出登录</button>
-			</view>
-		</view>
-
-		<CustomTabBar activePath="/pages/profile/profile" />
-
-		<!-- 修改密码弹窗 -->
-		<view class="modal-mask" v-if="showPasswordModal" @click.self="showPasswordModal = false">
-			<view class="modal-card">
-				<text class="modal-title">修改密码</text>
-
-				<view class="form-group">
-					<text class="form-label">当前密码</text>
-					<view class="password-input-wrapper">
-						<input class="dark-input pr-80" v-model="oldPassword" placeholder="请输入当前密码" :password="!showOldPwd" />
-						<view class="eye-icon" @click="showOldPwd = !showOldPwd">
-							<uni-icons :type="showOldPwd ? 'eye-filled' : 'eye-slash'" size="20" color="#888" />
-						</view>
-					</view>
-				</view>
-
-				<view class="form-group">
-					<text class="form-label">新密码</text>
-					<view class="password-input-wrapper">
-						<input class="dark-input pr-80" v-model="newPassword" placeholder="请输入新密码（至少6位）" :password="!showNewPwd" />
-						<view class="eye-icon" @click="showNewPwd = !showNewPwd">
-							<uni-icons :type="showNewPwd ? 'eye-filled' : 'eye-slash'" size="20" color="#888" />
-						</view>
-					</view>
-				</view>
-
-				<view class="form-group">
-					<text class="form-label">确认新密码</text>
-					<view class="password-input-wrapper">
-						<input class="dark-input pr-80" v-model="confirmPassword" placeholder="请再次输入新密码" :password="!showConfirmPwd" />
-						<view class="eye-icon" @click="showConfirmPwd = !showConfirmPwd">
-							<uni-icons :type="showConfirmPwd ? 'eye-filled' : 'eye-slash'" size="20" color="#888" />
-						</view>
-					</view>
-				</view>
-
-				<view class="modal-actions">
-					<button class="btn-secondary modal-cancel" @click="closePasswordModal">取消</button>
-					<button class="btn-primary modal-confirm" :loading="changingPassword" @click="changePassword">确认修改</button>
-				</view>
 			</view>
 		</view>
 	</view>
@@ -154,7 +85,6 @@
 import { ref, computed, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
-import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useAuthStore } from '../../stores/authStore'
 
 const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
@@ -175,14 +105,6 @@ const authStore = useAuthStore()
 const myComments = ref([])
 const loadingComments = ref(false)
 
-// 修改密码
-const showPasswordModal = ref(false)
-const oldPassword = ref('')
-const newPassword = ref('')
-const confirmPassword = ref('')
-const showOldPwd = ref(false)
-const showConfirmPwd = ref(false)
-const changingPassword = ref(false)
 
 // 视频列表相关
 const allVideos = ref([])
@@ -253,53 +175,6 @@ async function fetchMyComments() {
 	}
 }
 
-async function changePassword() {
-	if (!oldPassword.value) {
-		return uni.showToast({ title: '请输入当前密码', icon: 'none' })
-	}
-	if (!newPassword.value || newPassword.value.length < 6) {
-		return uni.showToast({ title: '新密码至少6个字符', icon: 'none' })
-	}
-	if (newPassword.value !== confirmPassword.value) {
-		return uni.showToast({ title: '两次密码不一致', icon: 'none' })
-	}
-
-	changingPassword.value = true
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/auth/password`,
-			method: 'PUT',
-			header: {
-				'Content-Type': 'application/json',
-				...authStore.getAuthHeader()
-			},
-			data: {
-				old_password: oldPassword.value,
-				new_password: newPassword.value
-			}
-		})
-		if (res.statusCode === 200) {
-			uni.showToast({ title: '密码修改成功', icon: 'success' })
-			closePasswordModal()
-		} else {
-			throw new Error(res.data?.error || '修改失败')
-		}
-	} catch (e) {
-		uni.showToast({ title: e.message || '修改失败', icon: 'none' })
-	} finally {
-		changingPassword.value = false
-	}
-}
-
-function closePasswordModal() {
-	showPasswordModal.value = false
-	oldPassword.value = ''
-	newPassword.value = ''
-	confirmPassword.value = ''
-	showOldPwd.value = false
-	showNewPwd.value = false
-	showConfirmPwd.value = false
-}
 
 async function handleLogout() {
 	uni.showModal({
@@ -350,15 +225,26 @@ function goLogin() {
 	uni.navigateTo({ url: '/pages/login/login' })
 }
 
+function goUpload() {
+	uni.navigateTo({ url: '/pages/upload/upload' })
+}
 
-function goAdmin() {
-	uni.navigateTo({ url: '/pages/admin/admin' })
+function goPasswordChange() {
+	uni.navigateTo({ url: '/pages/profile/changePassword' })
 }
 
 function goToMyComments(videoId) {
-	// 因为无法通过 URL 传递大量数组数据，我们可以把这个视频的评论数据先放进 uni 缓存中，或者直接在新页面重新请求/过滤
-	// 简单起见，我们把当前视频的 ID 作为参数传给新页面
 	uni.navigateTo({ url: `/pages/myComments/myComments?videoId=${videoId}` })
+}
+
+function goMyVideos() {
+	// Navigate to profile sub-page showing my videos
+	uni.navigateTo({ url: '/pages/profile/myVideos' })
+}
+
+function goMyComments() {
+	// Navigate to profile sub-page showing my comments grouped by video
+	uni.navigateTo({ url: '/pages/profile/myCommentsList' })
 }
 
 function formatTime(seconds) {
@@ -511,166 +397,48 @@ function formatDate(dateStr) {
 	color: #d0d0e0;
 }
 
-/* 评论区 */
-.section {
-	margin: 20rpx;
-}
-
-.section-header {
+/* 数据统计入口 */
+.stat-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 20rpx;
+	padding: 0 40rpx;
+	margin-top: -10rpx;
 	margin-bottom: 20rpx;
 }
 
-.section-title {
-	font-size: 30rpx;
-	font-weight: 600;
-	color: #e0e0e0;
-}
-
-.comment-group-card {
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.06);
-	border-radius: 16rpx;
-	padding: 24rpx;
-	margin-bottom: 16rpx;
+.stat-card {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 20rpx;
+	padding: 28rpx 24rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 	transition: all 0.2s ease;
 }
 
-.comment-group-card:active {
-	background: rgba(255, 255, 255, 0.06);
+.stat-card:active {
+	background: rgba(255, 255, 255, 0.08);
+	transform: scale(0.97);
 }
 
-.group-info {
-	display: flex;
-	flex-direction: column;
-}
-
-.group-video-title {
-	font-size: 28rpx;
-	font-weight: 600;
+.stat-number {
+	font-size: 56rpx;
+	font-weight: 400;
 	color: #fff;
-	margin-bottom: 12rpx;
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	line-height: 1.2;
+	margin-bottom: 6rpx;
 }
 
-.group-stats {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.group-count {
-	font-size: 24rpx;
-	color: #a0a0b8;
+.stat-label-row {
 	display: flex;
 	align-items: center;
 }
 
-/* 视频列表样式 */
-.video-group-card {
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.06);
-	border-radius: 16rpx;
-	padding: 28rpx;
-	margin-bottom: 20rpx;
-}
-
-.video-item-content {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.video-item-main {
-	flex: 1;
-	min-width: 0;
-}
-
-.video-item-title {
-	font-size: 30rpx;
-	font-weight: 600;
-	color: #fff;
-	margin-bottom: 12rpx;
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.video-item-tags {
-	display: flex;
-	align-items: center;
-	gap: 20rpx;
-}
-
-.tag-type {
-	font-size: 22rpx;
-	color: #a0a0b8;
-}
-
-.tag-date {
-	font-size: 22rpx;
-	color: #666;
-}
-
-.video-item-actions {
-	display: flex;
-	align-items: center;
-	gap: 20rpx;
-}
-
-.delete-btn-text {
+.stat-label {
 	font-size: 24rpx;
 	color: #888;
-	padding: 10rpx 0;
-}
-
-.delete-btn-text:active {
-	color: #e74c3c;
-}
-
-.comment-text {
-	font-size: 28rpx;
-	color: #c0c0d0;
-	display: block;
-	line-height: 1.6;
-	margin-bottom: 12rpx;
-}
-
-.comment-card-bottom {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.comment-date {
-	font-size: 22rpx;
-	color: #555;
-}
-
-.delete-btn {
-	font-size: 22rpx;
-	color: #e74c3c;
-	display: flex;
-	align-items: center;
-}
-
-.delete-btn:active {
-	opacity: 0.7;
-}
-
-.empty-state {
-	text-align: center;
-	padding: 80rpx 0;
-}
-
-.empty-text {
-	font-size: 28rpx;
-	color: #555;
-	display: block;
-	margin-top: 16rpx;
 }
 
 /* 退出登录 */
@@ -691,85 +459,4 @@ function formatDate(dateStr) {
 	background: rgba(231, 76, 60, 0.2);
 }
 
-/* 修改密码弹窗 */
-.modal-mask {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(0, 0, 0, 0.7);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 9999;
-}
-
-.modal-card {
-	width: 85%;
-	max-width: 640rpx;
-	background: #1e1e36;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 24rpx;
-	padding: 40rpx;
-}
-
-.modal-title {
-	font-size: 34rpx;
-	font-weight: 700;
-	color: #fff;
-	display: block;
-	text-align: center;
-	margin-bottom: 36rpx;
-}
-
-.form-group {
-	margin-bottom: 24rpx;
-}
-
-.form-label {
-	font-size: 24rpx;
-	color: #888;
-	margin-bottom: 10rpx;
-	display: block;
-}
-
-.password-input-wrapper {
-	position: relative;
-	width: 100%;
-}
-
-.pr-80 {
-	padding-right: 80rpx !important;
-}
-
-.eye-icon {
-	position: absolute;
-	right: 0;
-	top: 0;
-	width: 80rpx;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 2;
-}
-
-.modal-actions {
-	display: flex;
-	gap: 20rpx;
-	margin-top: 32rpx;
-}
-
-.modal-cancel {
-	flex: 1;
-	padding: 20rpx;
-	font-size: 28rpx;
-}
-
-.modal-confirm {
-	flex: 1;
-	padding: 20rpx;
-	font-size: 28rpx;
-}
 </style>

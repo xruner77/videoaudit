@@ -18,6 +18,13 @@ page {
 	line-height: 1.6;
 }
 
+/* 带有顶部发光效果的页面容器 */
+.page-container {
+	min-height: 100vh;
+	background: linear-gradient(180deg, rgba(108, 92, 231, 0.12) 0%, rgba(15, 15, 26, 1) 400rpx, rgba(15, 15, 26, 1) 100%);
+	padding-bottom: 60rpx;
+}
+
 /* 通用暗色输入框 */
 .dark-input {
 	background-color: rgba(255, 255, 255, 0.06);

@@ -1,5 +1,5 @@
 <template>
-	<view class="page">
+	<view class="page-container">
 		<Header title="我的评论" showBack />
 
 		<view class="section" v-if="loading">
@@ -10,9 +10,12 @@
 		</view>
 
 		<view class="section" v-else>
-			<view class="video-info-card" @click="goToVideo(videoId)" v-if="videoTitle">
+			<view class="video-info-card" @click="goToVideo(videoId)" v-if="videoInfo">
 				<view class="video-icon"><uni-icons type="videocam" size="24" color="#a855f7" /></view>
-				<text class="video-title">{{ videoTitle }}</text>
+				<view class="video-details">
+					<text class="video-title">{{ videoInfo.title }}</text>
+					<text class="video-meta">👤 {{ videoInfo.uploader }} · {{ formatDate(videoInfo.created_at) }}</text>
+				</view>
 				<uni-icons type="right" size="18" color="#666" />
 			</view>
 
@@ -52,11 +55,16 @@ const videoId = ref(0)
 const comments = ref([])
 const loading = ref(false)
 
-const videoTitle = computed(() => {
+const videoInfo = computed(() => {
 	if (comments.value.length > 0) {
-		return comments.value[0].video_title
+		const c = comments.value[0]
+		return {
+			title: c.video_title,
+			uploader: c.uploader || '未知',
+			created_at: c.video_created_at
+		}
 	}
-	return ''
+	return null
 })
 
 onLoad((options) => {
@@ -143,24 +151,17 @@ function formatDate(dateStr) {
 </script>
 
 <style scoped>
-.page {
-	min-height: 100vh;
-	background: #0f0f1a;
-	padding-bottom: 60rpx;
-}
 
 .section {
 	margin: 20rpx;
 }
 
 .video-info-card {
-	background: linear-gradient(135deg, rgba(108, 92, 231, 0.1), rgba(168, 85, 247, 0.05));
-	border: 1px solid rgba(168, 85, 247, 0.2);
-	border-radius: 16rpx;
-	padding: 30rpx 24rpx;
-	margin-bottom: 30rpx;
+	padding: 20rpx 0;
+	margin-bottom: 20rpx;
 	display: flex;
 	align-items: center;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .video-info-card:active {
@@ -173,14 +174,26 @@ function formatDate(dateStr) {
 	align-items: center;
 }
 
-.video-title {
+.video-details {
 	flex: 1;
+	min-width: 0;
+}
+
+.video-title {
 	font-size: 30rpx;
 	font-weight: 600;
 	color: #fff;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	display: block;
+	margin-bottom: 4rpx;
+}
+
+.video-meta {
+	font-size: 22rpx;
+	color: #666;
+	display: block;
 }
 
 .section-header {

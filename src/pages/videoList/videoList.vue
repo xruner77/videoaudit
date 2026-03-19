@@ -45,7 +45,9 @@
 			</view>
 		</view>
 
-		<CustomTabBar activePath="/pages/videoList/videoList" />
+		<view class="fab" @click="goUpload" v-if="authStore.isLoggedIn">
+			<text class="fab-icon"><uni-icons type="plusempty" size="24" color="#fff"/></text>
+		</view>
 	</view>
 </template>
 
@@ -53,7 +55,6 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
-import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useAuthStore } from '../../stores/authStore'
 
 const authStore = useAuthStore()
@@ -83,6 +84,10 @@ async function fetchVideos() {
 
 function goReview(videoId) {
 	uni.navigateTo({ url: `/pages/review/review?id=${videoId}` })
+}
+
+function goUpload() {
+	uni.navigateTo({ url: '/pages/upload/upload' })
 }
 
 function formatDate(dateStr) {
@@ -237,4 +242,28 @@ function formatDuration(seconds) {
 	margin-top: 10rpx;
 }
 
+.fab {
+	position: fixed;
+	bottom: 160rpx;
+	right: 40rpx;
+	width: 100rpx;
+	height: 100rpx;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #6c5ce7, #a855f7);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 8rpx 24rpx rgba(108, 92, 231, 0.4);
+	z-index: 100;
+}
+
+.fab:active {
+	transform: scale(0.9);
+}
+
+.fab-icon {
+	font-size: 48rpx;
+	color: #fff;
+	font-weight: 300;
+}
 </style>

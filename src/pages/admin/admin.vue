@@ -1,5 +1,5 @@
 <template>
-	<view class="page">
+	<view class="page-container">
 		<Header title="后台管理" />
 
 		<view class="admin-container" v-if="authStore.isAdmin">
@@ -210,10 +210,6 @@ function formatTime(seconds) {
 </script>
 
 <style scoped>
-.page {
-	min-height: 100vh;
-	background: #0f0f1a;
-}
 
 .admin-container {
 	padding: 24rpx;
