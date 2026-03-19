@@ -100,7 +100,18 @@ function chooseVideo() {
 	input.onchange = (e) => {
 		const file = e.target.files[0]
 		if (file) {
-			selectedFile.value = file
+			const video = document.createElement('video')
+			video.preload = 'metadata'
+			video.onloadedmetadata = () => {
+				window.URL.revokeObjectURL(video.src)
+				selectedFile.value = {
+					file: file,
+					name: file.name,
+					size: file.size,
+					duration: Math.floor(video.duration || 0)
+				}
+			}
+			video.src = URL.createObjectURL(file)
 		}
 	}
 	input.click()
@@ -113,7 +124,8 @@ function chooseVideo() {
 			selectedFile.value = {
 				path: res.tempFilePath,
 				name: res.tempFilePath.split('/').pop(),
-				size: res.size || 0
+				size: res.size || 0,
+				duration: Math.floor(res.duration || 0)
 			}
 		}
 	})
@@ -135,7 +147,8 @@ async function uploadLocal() {
 		// #ifdef H5
 		const formData = new FormData()
 		formData.append('title', title.value.trim())
-		formData.append('video', selectedFile.value)
+		formData.append('video', selectedFile.value.file)
+		formData.append('duration', selectedFile.value.duration || 0)
 
 		const xhr = new XMLHttpRequest()
 		xhr.open('POST', `${authStore.API_BASE}/api/videos/upload`)
@@ -167,7 +180,10 @@ async function uploadLocal() {
 				url: `${authStore.API_BASE}/api/videos/upload`,
 				filePath: selectedFile.value.path,
 				name: 'video',
-				formData: { title: title.value.trim() },
+				formData: { 
+					title: title.value.trim(),
+					duration: selectedFile.value.duration || 0
+				},
 				header: authStore.getAuthHeader(),
 				success: (res) => {
 					if (res.statusCode === 201) resolve(JSON.parse(res.data))

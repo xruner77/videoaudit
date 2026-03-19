@@ -19,16 +19,21 @@
 					<view class="video-type-badge">
 						<text><uni-icons type="chat" size="12" color="#fff" style="margin-right:4rpx;"/>{{ video.comment_count !== undefined ? video.comment_count : 0 }}</text>
 					</view>
+					<view class="video-duration-badge" v-if="video.duration">
+						<text>{{ formatDuration(video.duration) }}</text>
+					</view>
 				</view>
-				<view class="info-row">
-					<text class="video-title">{{ video.title }}</text>
-				</view>
-				<view class="video-meta">
-					<text class="meta-user"><uni-icons type="person" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.uploader || '未知' }}</text>
-					<view class="meta-stats">
-						<text class="meta-date">{{ formatDate(video.created_at) }}</text>
-						<text class="meta-comments" v-if="video.views !== undefined"><uni-icons type="eye" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.views }}</text>
-						<text class="meta-comments" v-else><uni-icons type="eye" size="12" color="#aaa" />{{ (video.id * 89 + 123) % 900 + 100 }}</text>
+				<view class="video-info">
+					<view class="info-row">
+						<text class="video-title">{{ video.title }}</text>
+					</view>
+					<view class="video-meta">
+						<text class="meta-user"><uni-icons type="person" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.uploader || '未知' }}</text>
+						<view class="meta-stats">
+							<text class="meta-date">{{ formatDate(video.created_at) }}</text>
+							<text class="meta-comments" v-if="video.views !== undefined"><uni-icons type="eye" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.views }}</text>
+							<text class="meta-comments" v-else><uni-icons type="eye" size="12" color="#aaa" />{{ (video.id * 89 + 123) % 900 + 100 }}</text>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -89,6 +94,13 @@ function formatDate(dateStr) {
 	if (!dateStr) return ''
 	const d = new Date(dateStr)
 	return `${d.getMonth() + 1}月${d.getDate()}日`
+}
+
+function formatDuration(seconds) {
+	if (!seconds) return '00:00'
+	const m = Math.floor(seconds / 60)
+	const s = seconds % 60
+	return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 </script>
 
@@ -157,8 +169,22 @@ function formatDate(dateStr) {
 	color: #fff;
 }
 
+.video-duration-badge {
+	position: absolute;
+	bottom: 12rpx;
+	right: 12rpx;
+	background: rgba(0, 0, 0, 0.6);
+	padding: 4rpx 12rpx;
+	border-radius: 6rpx;
+}
+
+.video-duration-badge text {
+	font-size: 20rpx;
+	color: #fff;
+}
+
 .video-info {
-	padding: 16rpx 20rpx;
+	padding: 16rpx 20rpx 24rpx;
 }
 
 .info-row {

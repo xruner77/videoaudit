@@ -53,6 +53,7 @@ $db->exec("
         type TEXT DEFAULT 'local',
         user_id INTEGER NOT NULL,
         views INTEGER DEFAULT 0,
+        duration INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )
@@ -60,9 +61,11 @@ $db->exec("
 
 try {
     $db->exec("ALTER TABLE videos ADD COLUMN views INTEGER DEFAULT 0");
-} catch (\PDOException $e) {
-    // 列可能已经存在，忽略错误
-}
+} catch (\PDOException $e) {}
+
+try {
+    $db->exec("ALTER TABLE videos ADD COLUMN duration INTEGER DEFAULT 0");
+} catch (\PDOException $e) {}
 
 $db->exec("
     CREATE TABLE IF NOT EXISTS comments (

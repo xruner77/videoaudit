@@ -88,11 +88,12 @@ return function (App $app, PDO $db) {
                 return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
             }
 
+            $duration = (int)($data['duration'] ?? 0);
             $filename = uniqid('vid_') . '.' . $ext;
             $file->moveTo($uploadDir . '/' . $filename);
 
-            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$title, '/uploads/' . $filename, 'local', $user->sub]);
+            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id, duration) VALUES (?, ?, ?, ?, ?)');
+            $stmt->execute([$title, '/uploads/' . $filename, 'local', $user->sub, $duration]);
 
             $videoId = $db->lastInsertId();
 
@@ -125,8 +126,10 @@ return function (App $app, PDO $db) {
                 return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
             }
 
-            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$title, $url, 'remote', $user->sub]);
+            $duration = (int)($data['duration'] ?? 0);
+
+            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id, duration) VALUES (?, ?, ?, ?, ?)');
+            $stmt->execute([$title, $url, 'remote', $user->sub, $duration]);
 
             $videoId = $db->lastInsertId();
 
