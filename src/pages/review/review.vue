@@ -110,15 +110,35 @@
 
 			<!-- 评论输入 -->
 			<view class="comment-input-section" v-if="authStore.isLoggedIn">
+				<!-- 回复提示 -->
+				<view class="reply-hint" v-if="replyTo">
+					<text class="reply-hint-text">回复 @{{ replyTo.username }}</text>
+					<uni-icons type="closeempty" size="16" color="#888" @click="cancelReply" />
+				</view>
 				<view class="input-row">
+					<view class="img-pick-btn" @click="chooseImage">
+						<uni-icons type="camera-filled" size="24" color="#6c5ce7" />
+					</view>
 					<input
 						class="dark-input comment-text-input"
 						v-model="commentText"
-						placeholder="输入审核意见..."
+						:placeholder="replyTo ? '回复 ' + replyTo.username + '...' : '输入审核意见...'"
 						@focus="pauseForComment"
 						maxlength="500"
 					/>
 					<button class="btn-primary send-btn" @click="submitComment" :loading="submitting">发送</button>
+				</view>
+				<!-- 图片预览 -->
+				<view class="img-preview-row" v-if="selectedImages.length > 0">
+					<view class="img-preview-item" v-for="(img, idx) in selectedImages" :key="idx">
+						<image :src="img.path" class="img-thumb" mode="aspectFill" @click="previewSelectedImage(idx)" />
+						<view class="img-upload-progress" v-if="img.uploading">
+							<text class="progress-text">{{ img.progress }}%</text>
+						</view>
+						<view class="img-remove" @click="removeImage(idx)">
+							<uni-icons type="closeempty" size="12" color="#fff" />
+						</view>
+					</view>
 				</view>
 				<text class="input-hint" v-if="commentTimestamp >= 0">
 					📍 将标记在 {{ formatTime(commentTimestamp) }}
@@ -130,28 +150,121 @@
 
 			<!-- 评论列表 -->
 			<view class="comment-list">
-				<text class="section-title">审核意见 ({{ comments.length }})</text>
-
-				<view class="comment-item" v-for="c in comments" :key="c.id" @click="seekTo(c.id, c.timestamp)">
-					<view class="comment-header">
-						<view class="comment-user">
-							<view class="comment-avatar">
-								<uni-icons type="person-filled" size="18" color="#d0d0e0" />
-							</view>
-							<text class="comment-username">{{ c.username }}</text>
-						</view>
-						<text class="comment-time" :class="{ 'time-active': selectedCommentId === c.id }">
-							⏱ {{ formatTime(c.timestamp) }}
-						</text>
+				<view class="comment-list-header">
+					<text class="section-title">审核意见 ({{ comments.length }})</text>
+					<view class="sort-btn" @click="showSortPopup = true">
+						<text class="sort-text">{{ sortLabel }}</text>
+						<uni-icons type="bottom" size="14" color="#a0a0b8" style="margin-left: 2px;" />
 					</view>
-					<text class="comment-content">{{ c.content }}</text>
 				</view>
+
+				<!-- 父评论 -->
+				<template v-for="c in parentComments" :key="c.id">
+					<view class="comment-item">
+						<view class="comment-main" @click="seekTo(c.id, c.timestamp)">
+							<view class="comment-header">
+								<view class="comment-user">
+									<view class="comment-avatar" :style="{ background: getAvatarColor(c.username) }">
+										<text class="avatar-letter">{{ getAvatarLetter(c.username) }}</text>
+									</view>
+									<view class="user-meta">
+										<text class="comment-username">{{ c.username }}</text>
+										<text class="comment-date">{{ c.created_at }}</text>
+									</view>
+								</view>
+								<text class="comment-time" :class="{ 'time-active': selectedCommentId === c.id }">
+									⏱ {{ formatTime(c.timestamp) }}
+								</text>
+							</view>
+							<view class="comment-content-box" v-if="c.content || c.image_url">
+								<text class="comment-content" v-if="c.content">{{ c.content }}</text>
+								<view class="comment-image-list" v-if="getImages(c.image_url).length > 0">
+									<image 
+										v-for="(img, idx) in getImages(c.image_url)" 
+										:key="idx" 
+										:src="getFullUrl(img)" 
+										class="comment-image" 
+										mode="widthFix" 
+										@click.stop="previewCommentImage(c.image_url, idx)" 
+									/>
+								</view>
+							</view>
+							<view class="comment-actions">
+								<text class="reply-btn" @click.stop="startReply(c)">回复</text>
+							</view>
+						</view>
+
+						<!-- 子评论（全展平，顺序往下排列） -->
+						<view class="replies-container" v-if="getAllThreadReplies(c.id).length > 0">
+							<view class="reply-item" v-for="r in getVisibleReplies(c.id)" :key="r.id" @click.stop="seekTo(c.id, c.timestamp)">
+								<view class="reply-header">
+									<view class="reply-user-info">
+										<view class="comment-avatar unified-avatar" :style="{ background: getAvatarColor(r.username) }">
+											<text class="avatar-letter-small">{{ getAvatarLetter(r.username) }}</text>
+										</view>
+										<view class="user-meta">
+											<text class="reply-username">{{ r.username }}</text>
+											<text class="reply-date">{{ r.created_at }}</text>
+										</view>
+									</view>
+								</view>
+								<view class="reply-content-box">
+									<text class="reply-content">
+										<text class="reply-to-at">回复 @{{ getReplyToUsername(r.parent_id) }}：</text>
+										<text v-if="r.content">{{ r.content }}</text>
+									</text>
+									<view class="comment-image-list mt-8" v-if="getImages(r.image_url).length > 0">
+										<image 
+											v-for="(img, idx) in getImages(r.image_url)" 
+											:key="idx" 
+											:src="getFullUrl(img)" 
+											class="reply-image" 
+											mode="widthFix" 
+											@click.stop="previewCommentImage(r.image_url, idx)" 
+										/>
+									</view>
+								</view>
+								<view class="reply-actions">
+									<text class="reply-btn" @click.stop="startReply(r)">回复</text>
+								</view>
+							</view>
+							
+							<!-- 展开/收起控制 -->
+							<view class="replies-fold-ctrl" v-if="getAllThreadReplies(c.id).length > 3" @click.stop="toggleExpand(c.id)">
+								<text class="fold-text" v-if="!isExpanded(c.id)">
+									查看更多 {{ getAllThreadReplies(c.id).length - 3 }} 条回复...
+								</text>
+								<text class="fold-text" v-else>
+									收起回复
+								</text>
+								<uni-icons :type="isExpanded(c.id) ? 'top' : 'bottom'" size="12" color="#a855f7" />
+							</view>
+						</view>
+					</view>
+				</template>
 
 				<view class="empty-comments" v-if="comments.length === 0">
 					<text>暂无审核意见</text>
 				</view>
 			</view>
 		</view>
+
+		<!-- 排序弹窗 -->
+		<view class="popup-mask" v-if="showSortPopup" @click="showSortPopup = false">
+			<view class="popup-content" @click.stop>
+				<view class="popup-header">
+					<text class="popup-title">选择排序方式</text>
+					<uni-icons type="closeempty" size="20" color="#888" @click="showSortPopup = false" />
+				</view>
+				<view class="sort-options">
+					<view class="sort-option" :class="{ active: sortType === 'newest' }" @click="selectSortType('newest')">最新发布</view>
+					<view class="sort-option" :class="{ active: sortType === 'oldest' }" @click="selectSortType('oldest')">最早发布</view>
+					<view class="sort-option" :class="{ active: sortType === 'timestamp' }" @click="selectSortType('timestamp')">时间戳</view>
+					<view class="sort-option" :class="{ active: sortType === 'reviewer' }" @click="selectSortType('reviewer')">审评者</view>
+				</view>
+			</view>
+		</view>
+
 	</view>
 </template>
 
@@ -184,8 +297,126 @@ const selectedCommentId = ref(null)
 const seekMessage = ref('')
 const isFullscreen = ref(false)
 const isRotated = ref(false)
+const showSortPopup = ref(false)
+const sortType = ref('timestamp')
+const selectedImages = ref([]) // [{path, progress, uploading, url}]
+const replyTo = ref(null)
 let seekTimer = null
 let videoContext = null
+
+const sortLabel = computed(() => {
+	switch(sortType.value) {
+		case 'newest': return '最新发布';
+		case 'oldest': return '最早发布';
+		case 'timestamp': return '时间戳';
+		case 'reviewer': return '审评者';
+		default: return '时间戳';
+	}
+})
+
+const sortedComments = computed(() => {
+	const list = [...comments.value]
+	switch(sortType.value) {
+		case 'timestamp':
+			return list.sort((a, b) => a.timestamp - b.timestamp)
+		case 'newest':
+			return list.sort((a, b) => b.id - a.id)
+		case 'oldest':
+			return list.sort((a, b) => a.id - b.id)
+		case 'reviewer':
+			return list.sort((a, b) => a.username.localeCompare(b.username))
+		default:
+			return list
+	}
+})
+
+function selectSortType(type) {
+	sortType.value = type
+	showSortPopup.value = false
+}
+
+const parentComments = computed(() => {
+	return sortedComments.value.filter(c => !c.parent_id)
+})
+
+function getReplies(parentId) {
+	return comments.value.filter(c => c.parent_id === parentId).sort((a, b) => a.id - b.id)
+}
+
+function getFullUrl(path) {
+	if (!path) return ''
+	if (path.startsWith('http')) return path
+	return authStore.API_BASE + path
+}
+
+function getImages(imageUrl) {
+	if (!imageUrl) return []
+	try {
+		const parsed = JSON.parse(imageUrl)
+		return Array.isArray(parsed) ? parsed : [imageUrl]
+	} catch (e) {
+		return [imageUrl]
+	}
+}
+
+function getReplyToUsername(parentId) {
+	if (!parentId) return ''
+	const p = comments.value.find(c => c.id === parentId)
+	return p ? p.username : '未知'
+}
+
+function getAllThreadReplies(rootId) {
+	// 简单查找所有以 rootId 为根的后代
+	let result = []
+	let processedIds = new Set()
+	let queue = [rootId]
+	
+	while(queue.length > 0) {
+		let pid = queue.shift()
+		let children = comments.value.filter(c => c.parent_id === pid)
+		for (let child of children) {
+			if (!processedIds.has(child.id)) {
+				result.push(child)
+				processedIds.add(child.id)
+				queue.push(child.id)
+			}
+		}
+	}
+	// 按 ID 排序确保时间顺序（对应回复顺序向下排列）
+	return result.sort((a, b) => a.id - b.id)
+}
+
+const expandedComments = ref({}) // { rootId: true/false }
+
+function toggleExpand(rootId) {
+	expandedComments.value[rootId] = !expandedComments.value[rootId]
+}
+
+function isExpanded(rootId) {
+	return !!expandedComments.value[rootId]
+}
+
+function getVisibleReplies(rootId) {
+	const all = getAllThreadReplies(rootId)
+	if (isExpanded(rootId) || all.length <= 3) {
+		return all
+	}
+	return all.slice(0, 3)
+}
+
+const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
+function getAvatarColor(username) {
+	if (!username) return avatarColors[0]
+	let hash = 0
+	for (let i = 0; i < username.length; i++) {
+		hash = username.charCodeAt(i) + ((hash << 5) - hash)
+	}
+	return avatarColors[Math.abs(hash) % avatarColors.length]
+}
+
+function getAvatarLetter(username) {
+	return username ? username.charAt(0).toUpperCase() : '?'
+}
 
 const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
@@ -477,13 +708,97 @@ function pauseForComment() {
 	commentTimestamp.value = currentTime.value
 }
 
+function chooseImage() {
+	if (selectedImages.value.length >= 3) {
+		return uni.showToast({ title: '最多上传 3 张图片', icon: 'none' })
+	}
+	uni.chooseImage({
+		count: 3 - selectedImages.value.length,
+		sizeType: ['compressed'],
+		success: (res) => {
+			const newImages = res.tempFilePaths.map(p => ({
+				path: p,
+				progress: 0,
+				uploading: false,
+				url: ''
+			}))
+			selectedImages.value.push(...newImages)
+		}
+	})
+}
+
+function removeImage(idx) {
+	selectedImages.value.splice(idx, 1)
+}
+
+function previewSelectedImage(idx) {
+	const urls = selectedImages.value.map(img => img.path)
+	uni.previewImage({ urls, current: urls[idx] })
+}
+
+function previewCommentImage(imageUrl, idx) {
+	const imgs = getImages(imageUrl)
+	const urls = imgs.map(img => getFullUrl(img))
+	uni.previewImage({ urls, current: urls[idx || 0] })
+}
+
+function startReply(comment) {
+	replyTo.value = { id: comment.id, username: comment.username }
+	pauseForComment()
+}
+
+function cancelReply() {
+	replyTo.value = null
+}
+
+async function uploadImage(imgObj) {
+	return new Promise((resolve, reject) => {
+		imgObj.uploading = true
+		const uploadTask = uni.uploadFile({
+			url: `${authStore.API_BASE}/api/comments/upload-image`,
+			filePath: imgObj.path,
+			name: 'image',
+			header: authStore.getAuthHeader(),
+			success: (res) => {
+				const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+				if (res.statusCode === 201 && data.url) {
+					imgObj.url = data.url
+					imgObj.uploading = false
+					resolve(data.url)
+				} else {
+					imgObj.uploading = false
+					reject(new Error(data.error || '图片上传失败'))
+				}
+			},
+			fail: (err) => {
+				imgObj.uploading = false
+				reject(new Error('图片上传失败'))
+			}
+		})
+
+		uploadTask.onProgressUpdate((res) => {
+			imgObj.progress = res.progress
+		})
+	})
+}
+
 async function submitComment() {
-	if (!commentText.value.trim()) {
-		return uni.showToast({ title: '请输入评论内容', icon: 'none' })
+	const text = commentText.value.trim()
+	if (!text && !selectedImage.value) {
+		return uni.showToast({ title: '请输入评论内容或选择图片', icon: 'none' })
 	}
 
 	submitting.value = true
 	try {
+		// 上传所有未上传的图片
+		const uploadPromises = selectedImages.value.map(img => {
+			if (img.url) return Promise.resolve(img.url)
+			return uploadImage(img)
+		})
+		
+		const imageUrls = await Promise.all(uploadPromises)
+		const imageUrlData = imageUrls.length > 0 ? JSON.stringify(imageUrls) : ''
+
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/comments`,
 			method: 'POST',
@@ -493,8 +808,10 @@ async function submitComment() {
 			},
 			data: {
 				video_id: videoId.value,
-				content: commentText.value.trim(),
-				timestamp: commentTimestamp.value >= 0 ? commentTimestamp.value : currentTime.value
+				content: text,
+				timestamp: commentTimestamp.value >= 0 ? commentTimestamp.value : currentTime.value,
+				image_url: imageUrlData || undefined,
+				parent_id: replyTo.value ? replyTo.value.id : undefined
 			}
 		})
 
@@ -502,6 +819,8 @@ async function submitComment() {
 			uni.showToast({ title: '评论成功', icon: 'success' })
 			commentText.value = ''
 			commentTimestamp.value = -1
+			selectedImages.value = []
+			replyTo.value = null
 			fetchComments()
 		} else {
 			throw new Error(res.data?.error || '评论失败')
@@ -965,20 +1284,40 @@ function formatTime(seconds) {
 	padding: 24rpx;
 }
 
+.comment-list-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24rpx;
+}
+
 .section-title {
 	font-size: 30rpx;
 	font-weight: 700;
 	color: #c0c0d0;
-	margin-bottom: 20rpx;
-	display: block;
+}
+
+.sort-btn {
+	display: flex;
+	align-items: center;
+	padding: 8rpx 16rpx;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 8rpx;
+	cursor: pointer;
+}
+
+.sort-btn:active {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.sort-text {
+	font-size: 24rpx;
+	color: #e0e0e0;
 }
 
 .comment-item {
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.05);
-	border-radius: 12rpx;
-	padding: 20rpx;
-	margin-bottom: 16rpx;
+	padding: 24rpx 0;
+	border-top: 1px solid #2e2e2e;
 }
 
 .comment-header {
@@ -995,19 +1334,45 @@ function formatTime(seconds) {
 }
 
 .comment-avatar {
-	width: 52rpx;
-	height: 52rpx;
+	width: 60rpx;
+	height: 60rpx;
 	border-radius: 50%;
 	background: #3d3d52;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	flex-shrink: 0;
+}
+
+.avatar-letter {
+	font-size: 26rpx;
+	color: #fff;
+	font-weight: 600;
+}
+
+.avatar-letter-small {
+	font-size: 20rpx;
+	color: #fff;
+	font-weight: 600;
+}
+
+.user-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
 }
 
 .comment-username {
-	font-size: 30rpx;
-	color: #a0a0b8;
+	font-size: 28rpx;
+	color: #c0c0d0;
 	font-weight: 500;
+	line-height: 1.1;
+}
+
+.comment-date {
+	font-size: 22rpx;
+	color: #777788;
+	line-height: 1.1;
 }
 
 .comment-time {
@@ -1030,11 +1395,249 @@ function formatTime(seconds) {
 	color: #ffffff;
 	line-height: 1.6;
 	word-break: break-all;
+	display: block;
+}
+
+.comment-content-box {
+	display: flex;
+	flex-direction: column;
+}
+
+.comment-image-wrapper {
+	margin-top: 12rpx;
+	display: block;
 }
 
 .comment-actions {
 	margin-top: 12rpx;
 	text-align: right;
+}
+
+.reply-btn {
+	font-size: 24rpx;
+	color: #6c5ce7;
+	cursor: pointer;
+}
+
+.reply-btn:active {
+	opacity: 0.7;
+}
+
+/* 图片选择 & 预览 */
+.img-pick-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.img-pick-btn:active {
+	opacity: 0.7;
+}
+
+.reply-hint {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12rpx 16rpx;
+	margin-bottom: 12rpx;
+	background: rgba(108, 92, 231, 0.12);
+	border-radius: 8rpx;
+}
+
+.reply-hint-text {
+	font-size: 24rpx;
+	color: #a0a0e0;
+}
+
+.img-preview-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+	margin-top: 16rpx;
+}
+
+.img-preview-item {
+	position: relative;
+	width: 100rpx;
+	height: 100rpx;
+}
+
+.img-thumb {
+	width: 100%;
+	height: 100%;
+	border-radius: 8rpx;
+	object-fit: cover;
+	background: #252538;
+}
+
+.img-upload-progress {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8rpx;
+}
+
+.progress-text {
+	font-size: 20rpx;
+	color: #fff;
+}
+
+.img-remove {
+	position: absolute;
+	top: -12rpx;
+	right: -12rpx;
+	width: 34rpx;
+	height: 34rpx;
+	border-radius: 50%;
+	background: #000;
+	opacity: 0.9;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2;
+}
+
+.img-remove:active {
+	background: #e74c3c; /* 只有点击时变红 */
+}
+
+/* 评论中的图片列表 */
+.comment-image-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+	margin-top: 16rpx;
+}
+
+.comment-image {
+	width: 180rpx;
+	height: 180rpx;
+	object-fit: cover;
+	border-radius: 8rpx;
+}
+
+.reply-image {
+	width: 140rpx;
+	height: 140rpx;
+	object-fit: cover;
+	border-radius: 8rpx;
+}
+
+.mt-8 {
+	margin-top: 8rpx !important;
+}
+
+/* 嵌入式子评论 */
+.replies-container {
+	margin-top: 24rpx;
+	padding: 24rpx;
+	background: #1e1e29;
+	border-radius: 12rpx;
+}
+
+.reply-item {
+	padding: 16rpx 0;
+	cursor: pointer;
+}
+
+.reply-item + .reply-item {
+	border-top: 1px solid rgba(255, 255, 255, 0.05);
+	margin-top: 16rpx;
+}
+
+.reply-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16rpx;
+}
+
+.reply-user-info {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.unified-avatar {
+	width: 44rpx !important;
+	height: 44rpx !important;
+}
+
+.reply-username {
+	font-size: 24rpx;
+	color: #c0c0d0;
+	font-weight: 500;
+	line-height: 1.1;
+}
+
+.reply-date {
+	font-size: 20rpx;
+	color: #777788;
+	line-height: 1.1;
+}
+
+.reply-content-box {
+	display: flex;
+	flex-direction: column;
+	padding-left: 52rpx;
+}
+
+.reply-content {
+	font-size: 28rpx;
+	color: #ffffff;
+	line-height: 1.6;
+	word-break: break-all;
+	display: block;
+}
+
+.reply-to-at {
+	color: #a855f7;
+	font-weight: 600;
+	margin-right: 8rpx;
+}
+
+.reply-image-wrapper {
+	margin-top: 12rpx;
+	display: block;
+}
+
+.reply-image {
+	max-width: 200rpx;
+	border-radius: 8rpx;
+}
+
+.reply-actions {
+	margin-top: 12rpx;
+	text-align: right;
+}
+
+.replies-fold-ctrl {
+	padding: 20rpx 0 10rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	cursor: pointer;
+}
+
+.replies-fold-ctrl:active {
+	opacity: 0.7;
+}
+
+.fold-text {
+	font-size: 26rpx;
+	color: #a855f7;
+	font-weight: 500;
 }
 
 .delete-btn {
@@ -1050,5 +1653,64 @@ function formatTime(seconds) {
 .empty-comments text {
 	color: #555;
 	font-size: 26rpx;
+}
+
+/* --------------- 排序弹窗 --------------- */
+.popup-mask {
+	position: fixed;
+	top: 0; left: 0; right: 0; bottom: 0;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 1000;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+}
+
+.popup-content {
+	background: #1f1f2e;
+	border-top-left-radius: 20rpx;
+	border-top-right-radius: 20rpx;
+	padding: 30rpx 40rpx calc(40rpx + env(safe-area-inset-bottom));
+	animation: slideUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes slideUp {
+	from { transform: translateY(100%); }
+	to { transform: translateY(0); }
+}
+
+.popup-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 30rpx;
+}
+
+.popup-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #fff;
+}
+
+.sort-options {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20rpx;
+}
+
+.sort-option {
+	background: rgba(255, 255, 255, 0.06);
+	color: #c0c0d0;
+	padding: 26rpx 0;
+	text-align: center;
+	border-radius: 12rpx;
+	font-size: 28rpx;
+	transition: all 0.2s;
+}
+
+.sort-option.active {
+	background: #5b52f6;
+	color: #fff;
+	font-weight: 600;
 }
 </style>

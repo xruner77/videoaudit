@@ -11,14 +11,15 @@ use Slim\App;
  * - 获取用户评论 (需登录)
  * - 获取视频评论 (公开)
  * - 创建评论 (需登录)
+ * - 上传评论图片 (需登录)
  * - 删除评论 (仅创建者或管理员)
  */
 return function (App $app, PDO $db) {
 
     $jwtSecret = 'videoaudit_jwt_secret_key_2026';
+    $uploadDir = __DIR__ . '/../../uploads/images';
 
     // GET /api/comments/user/{userId} - 获取用户的所有评论 (需登录)
-    // ⚠️ 必须在 /api/comments/{videoId} 之前定义，否则 "user" 会被当作 videoId
     $app->get('/api/comments/user/{userId}', function (Request $request, Response $response, array $args) use ($db) {
         $userId = (int) $args['userId'];
 
@@ -55,6 +56,44 @@ return function (App $app, PDO $db) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 
+    // POST /api/comments/upload-image - 上传评论图片 (需登录)
+    $app->post('/api/comments/upload-image', function (Request $request, Response $response) use ($uploadDir) {
+        $uploadedFiles = $request->getUploadedFiles();
+        $file = $uploadedFiles['image'] ?? null;
+
+        if (!$file || $file->getError() !== UPLOAD_ERR_OK) {
+            $response->getBody()->write(json_encode(['error' => '请上传图片文件']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        // 校验文件类型
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        $clientMediaType = $file->getClientMediaType();
+        if (!in_array($clientMediaType, $allowedTypes)) {
+            $response->getBody()->write(json_encode(['error' => '仅支持 JPG / PNG / WebP / GIF 格式']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        // 限制文件大小 (10MB)
+        if ($file->getSize() > 10 * 1024 * 1024) {
+            $response->getBody()->write(json_encode(['error' => '图片大小不能超过 10MB']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        $ext = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+            $ext = 'jpg';
+        }
+
+        $filename = uniqid('img_') . '.' . $ext;
+        $file->moveTo($uploadDir . '/' . $filename);
+
+        $response->getBody()->write(json_encode([
+            'url' => '/uploads/images/' . $filename
+        ]));
+        return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
+
     // POST /api/comments - 创建评论 (需登录)
     $app->post('/api/comments', function (Request $request, Response $response) use ($db) {
         $user = $request->getAttribute('user');
@@ -63,8 +102,11 @@ return function (App $app, PDO $db) {
         $videoId = (int) ($data['video_id'] ?? 0);
         $content = trim($data['content'] ?? '');
         $timestamp = (float) ($data['timestamp'] ?? 0);
+        $imageUrl = trim($data['image_url'] ?? '');
+        $parentId = !empty($data['parent_id']) ? (int) $data['parent_id'] : null;
 
-        if (empty($content)) {
+        // 至少需要文字或图片
+        if (empty($content) && empty($imageUrl)) {
             $response->getBody()->write(json_encode(['error' => '评论内容不能为空']));
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
         }
@@ -87,8 +129,18 @@ return function (App $app, PDO $db) {
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
 
-        $stmt = $db->prepare('INSERT INTO comments (video_id, user_id, content, timestamp) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$videoId, $user->sub, $content, $timestamp]);
+        // 如果是回复，确认父评论存在
+        if ($parentId !== null) {
+            $stmt = $db->prepare('SELECT id FROM comments WHERE id = ?');
+            $stmt->execute([$parentId]);
+            if (!$stmt->fetch()) {
+                $response->getBody()->write(json_encode(['error' => '被回复的评论不存在']));
+                return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            }
+        }
+
+        $stmt = $db->prepare('INSERT INTO comments (video_id, user_id, content, timestamp, image_url, parent_id) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$videoId, $user->sub, $content, $timestamp, $imageUrl ?: null, $parentId]);
 
         $commentId = $db->lastInsertId();
 
@@ -101,13 +153,15 @@ return function (App $app, PDO $db) {
                 'username' => $user->username,
                 'content' => $content,
                 'timestamp' => $timestamp,
+                'image_url' => $imageUrl ?: null,
+                'parent_id' => $parentId,
             ]
         ]));
         return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
     // DELETE /api/comments/{id} - 删除评论 (仅创建者或管理员)
-    $app->delete('/api/comments/{id}', function (Request $request, Response $response, array $args) use ($db) {
+    $app->delete('/api/comments/{id}', function (Request $request, Response $response, array $args) use ($db, $uploadDir) {
         $user = $request->getAttribute('user');
         $commentId = (int) $args['id'];
 
@@ -120,12 +174,22 @@ return function (App $app, PDO $db) {
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
 
-        // 权限检查：仅评论创建者或管理员可删除
+        // 权限检查
         if ($comment['user_id'] != $user->sub && ($user->role ?? '') !== 'admin') {
             $response->getBody()->write(json_encode(['error' => '无权删除此评论']));
             return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
         }
 
+        // 删除关联图片文件
+        if (!empty($comment['image_url'])) {
+            $filePath = $uploadDir . '/' . basename($comment['image_url']);
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+        }
+
+        // 删除子评论
+        $db->prepare('DELETE FROM comments WHERE parent_id = ?')->execute([$commentId]);
         $db->prepare('DELETE FROM comments WHERE id = ?')->execute([$commentId]);
 
         $response->getBody()->write(json_encode(['message' => '删除成功']));

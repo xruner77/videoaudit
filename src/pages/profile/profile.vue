@@ -18,8 +18,8 @@
 			<!-- 用户信息卡片 -->
 			<view class="user-card">
 				<view class="user-info">
-					<view class="avatar-large">
-						<uni-icons type="person-filled" size="36" color="#ffffff" />
+					<view class="avatar-large" :style="{ background: getAvatarColor(authStore.username) }">
+						<text class="avatar-letter-large">{{ getAvatarLetter(authStore.username) }}</text>
 					</view>
 					<view class="user-details">
 						<text class="user-name">{{ authStore.username }}</text>
@@ -52,6 +52,34 @@
 						<text class="menu-label">修改密码</text>
 						<uni-icons type="right" size="16" color="#555" />
 					</view>
+				</view>
+			</view>
+
+			<!-- 我的视频 -->
+			<view class="section">
+				<view class="section-header">
+					<text class="section-title">我的视频 ({{ myVideos.length }} 个)</text>
+				</view>
+
+				<view class="video-group-card" v-for="v in myVideos" :key="v.id">
+					<view class="video-item-content" @click="goReview(v.id)">
+						<view class="video-item-main">
+							<text class="video-item-title">{{ v.title }}</text>
+							<view class="video-item-tags">
+								<text class="tag-type">{{ v.type === 'local' ? '📁 本地' : '🔗 远程' }}</text>
+								<text class="tag-date">{{ formatDate(v.created_at) }}</text>
+							</view>
+						</view>
+						<view class="video-item-actions">
+							<text class="delete-btn-text" @click.stop="deleteVideo(v.id)">删除</text>
+							<uni-icons type="right" size="16" color="#555" />
+						</view>
+					</view>
+				</view>
+
+				<view class="empty-state" v-if="!loadingVideos && myVideos.length === 0">
+					<uni-icons type="videocam" size="40" color="#444" />
+					<text class="empty-text">暂无上传的视频</text>
 				</view>
 			</view>
 
@@ -128,10 +156,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
+
+const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
+function getAvatarColor(username) {
+	if (!username) return avatarColors[0]
+	let hash = 0
+	for (let i = 0; i < username.length; i++) {
+		hash = username.charCodeAt(i) + ((hash << 5) - hash)
+	}
+	return avatarColors[Math.abs(hash) % avatarColors.length]
+}
+
+function getAvatarLetter(username) {
+	return username ? username.charAt(0).toUpperCase() : '?'
+}
 
 const authStore = useAuthStore()
 const myComments = ref([])
@@ -143,9 +185,16 @@ const oldPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 const showOldPwd = ref(false)
-const showNewPwd = ref(false)
 const showConfirmPwd = ref(false)
 const changingPassword = ref(false)
+
+// 视频列表相关
+const allVideos = ref([])
+const loadingVideos = ref(false)
+
+const myVideos = computed(() => {
+	return allVideos.value.filter(v => v.user_id == authStore.user?.id)
+})
 
 // 按视频分组评论
 const groupedComments = computed(() => {
@@ -169,8 +218,26 @@ const groupedComments = computed(() => {
 onShow(() => {
 	if (authStore.isLoggedIn) {
 		fetchMyComments()
+		fetchVideos()
 	}
 })
+
+async function fetchVideos() {
+	loadingVideos.value = true
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/videos`,
+			method: 'GET'
+		})
+		if (res.statusCode === 200) {
+			allVideos.value = res.data.videos || []
+		}
+	} catch (e) {
+		console.error(e)
+	} finally {
+		loadingVideos.value = false
+	}
+}
 
 async function fetchMyComments() {
 	loadingComments.value = true
@@ -238,7 +305,7 @@ function closePasswordModal() {
 	showConfirmPwd.value = false
 }
 
-function handleLogout() {
+async function handleLogout() {
 	uni.showModal({
 		title: '确认退出',
 		content: '确定要退出登录吗？',
@@ -252,6 +319,35 @@ function handleLogout() {
 			}
 		}
 	})
+}
+
+async function deleteVideo(id) {
+	uni.showModal({
+		title: '确认删除',
+		content: '确定要删除此视频及所有评论吗？',
+		success: async (res) => {
+			if (!res.confirm) return
+			try {
+				const resp = await uni.request({
+					url: `${authStore.API_BASE}/api/videos/${id}`,
+					method: 'DELETE',
+					header: authStore.getAuthHeader()
+				})
+				if (resp.statusCode === 200) {
+					uni.showToast({ title: '已删除', icon: 'success' })
+					fetchVideos()
+				} else {
+					throw new Error(resp.data?.error || '删除失败')
+				}
+			} catch (e) {
+				uni.showToast({ title: e.message, icon: 'none' })
+			}
+		}
+	})
+}
+
+function goReview(id) {
+	uni.navigateTo({ url: `/pages/review/review?id=${id}` })
 }
 
 function goLogin() {
@@ -335,11 +431,8 @@ function formatDate(dateStr) {
 
 /* 用户卡片 */
 .user-card {
-	margin: 20rpx;
-	padding: 40rpx;
-	background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(168, 85, 247, 0.1));
-	border: 1px solid rgba(108, 92, 231, 0.2);
-	border-radius: 24rpx;
+	padding: 60rpx 40rpx;
+	background: linear-gradient(180deg, rgba(88, 72, 211, 0.15) 0%, rgba(15, 15, 26, 1) 100%);
 }
 
 .user-info {
@@ -348,15 +441,20 @@ function formatDate(dateStr) {
 }
 
 .avatar-large {
-	width: 100rpx;
-	height: 100rpx;
+	width: 120rpx;
+	height: 120rpx;
 	border-radius: 50%;
-	background: linear-gradient(135deg, #6c5ce7, #a855f7);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin-right: 28rpx;
-	box-shadow: 0 8rpx 24rpx rgba(108, 92, 231, 0.4);
+	margin-right: 32rpx;
+	box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.3);
+}
+
+.avatar-letter-large {
+	font-size: 52rpx;
+	color: #fff;
+	font-weight: 700;
 }
 
 .user-details {
@@ -477,11 +575,67 @@ function formatDate(dateStr) {
 	align-items: center;
 }
 
-.comment-timestamp {
+/* 视频列表样式 */
+.video-group-card {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 16rpx;
+	padding: 28rpx;
+	margin-bottom: 20rpx;
+}
+
+.video-item-content {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.video-item-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.video-item-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #fff;
+	margin-bottom: 12rpx;
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.video-item-tags {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.tag-type {
 	font-size: 22rpx;
-	color: #f39c12;
-	margin-left: 16rpx;
-	flex-shrink: 0;
+	color: #a0a0b8;
+}
+
+.tag-date {
+	font-size: 22rpx;
+	color: #666;
+}
+
+.video-item-actions {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.delete-btn-text {
+	font-size: 24rpx;
+	color: #888;
+	padding: 10rpx 0;
+}
+
+.delete-btn-text:active {
+	color: #e74c3c;
 }
 
 .comment-text {
@@ -532,9 +686,9 @@ function formatDate(dateStr) {
 }
 
 .logout-btn {
-	background: rgba(231, 76, 60, 0.1);
-	border: 1px solid rgba(231, 76, 60, 0.2);
-	color: #e74c3c;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	color: #88889a;
 	font-size: 28rpx;
 	border-radius: 16rpx;
 	padding: 24rpx;

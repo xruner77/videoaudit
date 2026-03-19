@@ -63,23 +63,6 @@
 				</button>
 			</view>
 			</view>
-
-			<!-- 我的视频 -->
-			<view class="my-videos">
-				<text class="section-title">我的视频</text>
-
-				<view class="video-item" v-for="v in myVideos" :key="v.id">
-					<view class="video-item-info" @click="goReview(v.id)">
-						<text class="video-item-title">{{ v.title }}</text>
-						<text class="video-item-type">{{ v.type === 'local' ? '📁 本地' : '🔗 远程' }}</text>
-					</view>
-					<text class="delete-btn" @click="deleteVideo(v.id)">删除</text>
-				</view>
-
-				<view class="empty-state" v-if="myVideos.length === 0">
-					<text>暂无上传的视频</text>
-				</view>
-			</view>
 		</view>
 	</view>
 </template>
@@ -98,11 +81,6 @@ const remoteUrl = ref('')
 const selectedFile = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref(0)
-const allVideos = ref([])
-
-const myVideos = computed(() => {
-	return allVideos.value.filter(v => v.user_id == authStore.user?.id)
-})
 
 onShow(() => {
 	if (!authStore.isLoggedIn) {
@@ -112,22 +90,7 @@ onShow(() => {
 		}, 500)
 		return
 	}
-	fetchVideos()
 })
-
-async function fetchVideos() {
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET'
-		})
-		if (res.statusCode === 200) {
-			allVideos.value = res.data.videos || []
-		}
-	} catch (e) {
-		console.error(e)
-	}
-}
 
 function chooseVideo() {
 	// #ifdef H5
@@ -222,7 +185,9 @@ async function uploadLocal() {
 		title.value = ''
 		selectedFile.value = null
 		uploadProgress.value = 0
-		fetchVideos()
+		setTimeout(() => {
+			uni.switchTab({ url: '/pages/profile/profile' })
+		}, 1500)
 	} catch (e) {
 		uni.showToast({ title: e.message || '上传失败', icon: 'none' })
 	} finally {
@@ -257,7 +222,9 @@ async function addRemote() {
 			uni.showToast({ title: '添加成功', icon: 'success' })
 			title.value = ''
 			remoteUrl.value = ''
-			fetchVideos()
+			setTimeout(() => {
+				uni.switchTab({ url: '/pages/profile/profile' })
+			}, 1500)
 		} else {
 			throw new Error(res.data?.error || '添加失败')
 		}
@@ -266,31 +233,6 @@ async function addRemote() {
 	} finally {
 		uploading.value = false
 	}
-}
-
-async function deleteVideo(id) {
-	uni.showModal({
-		title: '确认删除',
-		content: '确定要删除此视频及所有评论吗？',
-		success: async (res) => {
-			if (!res.confirm) return
-			try {
-				const resp = await uni.request({
-					url: `${authStore.API_BASE}/api/videos/${id}`,
-					method: 'DELETE',
-					header: authStore.getAuthHeader()
-				})
-				if (resp.statusCode === 200) {
-					uni.showToast({ title: '已删除', icon: 'success' })
-					fetchVideos()
-				} else {
-					throw new Error(resp.data?.error || '删除失败')
-				}
-			} catch (e) {
-				uni.showToast({ title: e.message, icon: 'none' })
-			}
-		}
-	})
 }
 
 function goReview(id) {
@@ -433,62 +375,5 @@ function formatSize(bytes) {
 	align-items: center;
 	justify-content: center;
 	padding: 0;
-}
-
-/* 我的视频列表 */
-.my-videos {
-	margin-top: 20rpx;
-}
-
-.section-title {
-	font-size: 30rpx;
-	font-weight: 700;
-	color: #c0c0d0;
-	margin-bottom: 20rpx;
-	display: block;
-}
-
-.video-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.05);
-	border-radius: 12rpx;
-	padding: 20rpx;
-	margin-bottom: 12rpx;
-}
-
-.video-item-info {
-	flex: 1;
-}
-
-.video-item-title {
-	font-size: 28rpx;
-	color: #d0d0e0;
-	display: block;
-}
-
-.video-item-type {
-	font-size: 22rpx;
-	color: #666;
-	margin-top: 6rpx;
-	display: block;
-}
-
-.delete-btn {
-	color: #e74c3c;
-	font-size: 24rpx;
-	padding: 10rpx 20rpx;
-}
-
-.empty-state {
-	text-align: center;
-	padding: 40rpx;
-}
-
-.empty-state text {
-	color: #555;
-	font-size: 26rpx;
 }
 </style>

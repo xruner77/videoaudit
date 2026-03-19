@@ -69,13 +69,25 @@ $db->exec("
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         video_id INTEGER NOT NULL,
         user_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
+        content TEXT DEFAULT '',
         timestamp REAL NOT NULL,
+        image_url TEXT DEFAULT NULL,
+        parent_id INTEGER DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )
 ");
+
+// 兼容旧表：尝试添加新列
+try { $db->exec("ALTER TABLE comments ADD COLUMN image_url TEXT DEFAULT NULL"); } catch (\PDOException $e) {}
+try { $db->exec("ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL"); } catch (\PDOException $e) {}
+
+// 确保评论图片上传目录存在
+$commentImageDir = __DIR__ . '/../uploads/images';
+if (!is_dir($commentImageDir)) {
+    mkdir($commentImageDir, 0755, true);
+}
 
 // 预设管理员 (仅首次运行时创建)
 $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username = 'admin'");
