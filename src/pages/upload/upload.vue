@@ -211,6 +211,32 @@ async function uploadLocal() {
 	}
 }
 
+function getRemoteDuration(url) {
+	return new Promise((resolve) => {
+		// #ifdef H5
+		const timer = setTimeout(() => {
+			resolve(0)
+		}, 5000) // 5s 延时，防止卡死
+		
+		const video = document.createElement('video')
+		video.preload = 'metadata'
+		video.onloadedmetadata = () => {
+			clearTimeout(timer)
+			resolve(Math.floor(video.duration || 0))
+		}
+		video.onerror = () => {
+			clearTimeout(timer)
+			resolve(0)
+		}
+		video.src = url
+		// #endif
+
+		// #ifndef H5
+		resolve(0)
+		// #endif
+	})
+}
+
 async function addRemote() {
 	if (!title.value.trim()) {
 		return uni.showToast({ title: '请输入标题', icon: 'none' })
@@ -221,6 +247,7 @@ async function addRemote() {
 
 	uploading.value = true
 	try {
+		const duration = await getRemoteDuration(remoteUrl.value.trim())
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/videos/remote`,
 			method: 'POST',
@@ -230,7 +257,8 @@ async function addRemote() {
 			},
 			data: {
 				title: title.value.trim(),
-				url: remoteUrl.value.trim()
+				url: remoteUrl.value.trim(),
+				duration: duration
 			}
 		})
 

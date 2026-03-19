@@ -33,14 +33,14 @@
 				<view class="stat-card" @click="goMyVideos">
 					<text class="stat-number">{{ myVideos.length }}</text>
 					<view class="stat-label-row">
-						<uni-icons type="videocam" size="14" color="#888" style="margin-right:6rpx;" />
+						<text class="stat-icon">🎬</text>
 						<text class="stat-label">我的视频</text>
 					</view>
 				</view>
 				<view class="stat-card" @click="goMyComments">
 					<text class="stat-number">{{ myComments.length }}</text>
 					<view class="stat-label-row">
-						<uni-icons type="chat" size="14" color="#888" style="margin-right:6rpx;" />
+						<text class="stat-icon">💬</text>
 						<text class="stat-label">我的评论</text>
 					</view>
 				</view>
@@ -50,22 +50,22 @@
 			<view class="menu-section">
 				<view class="menu-card">
 					<view class="menu-item" @click="goUpload" v-if="authStore.isLoggedIn">
-						<view class="menu-icon-wrapper" style="background: rgba(108, 92, 231, 0.15);">
-							<uni-icons type="cloud-upload" size="20" color="#6c5ce7" />
+						<view class="menu-icon-wrapper">
+							<uni-icons type="cloud-upload" size="20" color="#b8b8b8" />
 						</view>
 						<text class="menu-label">上传视频</text>
 						<uni-icons type="right" size="16" color="#555" />
 					</view>
 					<view class="menu-item" @click="goAdmin" v-if="authStore.isAdmin">
-						<view class="menu-icon-wrapper" style="background: rgba(52, 152, 219, 0.15);">
-							<uni-icons type="gear" size="20" color="#3498db" />
+						<view class="menu-icon-wrapper">
+							<uni-icons type="gear" size="20" color="#b8b8b8" />
 						</view>
 						<text class="menu-label">后台管理</text>
 						<uni-icons type="right" size="16" color="#555" />
 					</view>
 					<view class="menu-item" @click="goPasswordChange">
-						<view class="menu-icon-wrapper" style="background: rgba(46, 204, 113, 0.15);">
-							<uni-icons type="locked" size="20" color="#2ecc71" />
+						<view class="menu-icon-wrapper">
+							<uni-icons type="locked" size="20" color="#b8b8b8" />
 						</view>
 						<text class="menu-label">修改密码</text>
 						<uni-icons type="right" size="16" color="#555" />
@@ -75,7 +75,10 @@
 
 			<!-- 退出登录 -->
 			<view class="logout-section">
-				<button class="logout-btn" @click="handleLogout">退出登录</button>
+				<button class="logout-btn" @click="handleLogout">
+					<text>退出登录</text>
+					<uni-icons type="redo" size="18" color="#b8b8b8" style="margin-left:12rpx;"/>
+				</button>
 			</view>
 		</view>
 	</view>
@@ -227,6 +230,10 @@ function goLogin() {
 
 function goUpload() {
 	uni.navigateTo({ url: '/pages/upload/upload' })
+}
+
+function goAdmin() {
+	uni.navigateTo({ url: '/pages/admin/admin' })
 }
 
 function goPasswordChange() {
@@ -436,8 +443,13 @@ function formatDate(dateStr) {
 	align-items: center;
 }
 
+.stat-icon {
+	font-size: 28rpx;
+	margin-right: 8rpx;
+}
+
 .stat-label {
-	font-size: 24rpx;
+	font-size: 28rpx;
 	color: #888;
 }
 
@@ -447,16 +459,23 @@ function formatDate(dateStr) {
 }
 
 .logout-btn {
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	color: #88889a;
+	background: transparent;
+	border: none;
+	color: #e5e5e5;
 	font-size: 28rpx;
 	border-radius: 16rpx;
 	padding: 24rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.logout-btn::after {
+	border: none;
 }
 
 .logout-btn:active {
-	background: rgba(231, 76, 60, 0.2);
+	opacity: 0.6;
 }
 
 </style>

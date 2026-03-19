@@ -25,7 +25,7 @@
 
 			<view class="comment-card" v-for="c in comments" :key="c.id">
 				<view class="comment-card-top">
-					<text class="comment-timestamp">⏱ 视频位置: {{ formatTime(c.timestamp) }}</text>
+					<text class="comment-timestamp">视频位置: {{ formatTime(c.timestamp) }}</text>
 				</view>
 				<text class="comment-text">{{ c.content }}</text>
 				<view class="comment-card-bottom">

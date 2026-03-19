@@ -1,6 +1,6 @@
 <template>
 	<view class="page-container">
-		<Header title="后台管理" />
+		<Header title="后台管理" showBack />
 
 		<view class="admin-container" v-if="authStore.isAdmin">
 			<!-- 管理 Tab -->
@@ -45,7 +45,7 @@
 					<view class="admin-item-info">
 						<text class="admin-item-title">{{ c.content }}</text>
 						<text class="admin-item-meta">
-							👤 {{ c.username }} · ⏱ {{ formatTime(c.timestamp) }}
+							👤 {{ c.username }} · {{ formatTime(c.timestamp) }}
 						</text>
 					</view>
 					<view class="admin-item-actions">

@@ -73,7 +73,7 @@
 	],
 	"tabBar": {
 		"color": "#666",
-		"selectedColor": "#a855f7",
+		"selectedColor": "#b8b8b8",
 		"backgroundColor": "#1a1a2e",
 		"borderStyle": "black",
 		"iconfontSrc": "static/uniicons.ttf",
@@ -86,7 +86,7 @@
 					"selectedText": "\ue663",
 					"fontSize": "22px",
 					"color": "#666",
-					"selectedColor": "#a855f7"
+					"selectedColor": "#b8b8b8"
 				}
 			},
 			{
@@ -97,7 +97,7 @@
 					"selectedText": "\ue69d",
 					"fontSize": "22px",
 					"color": "#666",
-					"selectedColor": "#a855f7"
+					"selectedColor": "#b8b8b8"
 				}
 			}
 		]

@@ -107,11 +107,21 @@
 
 			<!-- 视频信息展示区 -->
 			<view class="video-meta-section">
-				<text class="meta-title">{{ videoTitle }}</text>
 				<view class="meta-details">
-					<text class="meta-item"><uni-icons type="person" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploader || '未知' }}</text>
-					<text class="meta-item"><uni-icons type="calendar" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoUploadDate }}</text>
-					<text class="meta-item"><uni-icons type="eye" size="14" color="#888" style="margin-right:4rpx;"/>{{ videoViews }}</text>
+					<view class="meta-item">
+						<uni-icons type="person" size="14" color="#999"/>
+						<text class="meta-text">{{ videoUploader || '未知' }}</text>
+					</view>
+					<text class="meta-dot">·</text>
+					<view class="meta-item">
+						<uni-icons type="calendar" size="14" color="#999"/>
+						<text class="meta-text">{{ videoUploadDate }}</text>
+					</view>
+					<view style="flex: 1"></view>
+					<view class="meta-item">
+						<uni-icons type="eye" size="14" color="#999"/>
+						<text class="meta-text">{{ videoViews }}</text>
+					</view>
 				</view>
 			</view>
 
@@ -124,7 +134,7 @@
 				</view>
 				<view class="input-row">
 					<view class="img-pick-btn" @click="chooseImage">
-						<uni-icons type="camera-filled" size="24" color="#6c5ce7" />
+						<uni-icons type="camera" size="24" color="#b8b8b8" />
 					</view>
 					<textarea
 						class="dark-input comment-text-textarea"
@@ -162,8 +172,14 @@
 				<view class="comment-list-header">
 					<text class="section-title">审核意见 ({{ comments.length }})</text>
 					<view class="sort-btn" @click="showSortPopup = true">
-						<text class="sort-text">{{ sortLabel }}</text>
-						<uni-icons type="bottom" size="14" color="#a0a0b8" style="margin-left: 2px;" />
+						<text class="sort-text">{{ hasSorted ? sortLabel : '切换排序' }}</text>
+						<!-- 自定义上下箭头 SVG -->
+						<view class="sort-icon-wrapper">
+							<svg viewBox="0 0 24 24" width="12" height="12" stroke="#a0a0b8" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="7 15 12 20 17 15"></polyline>
+								<polyline points="7 9 12 4 17 9"></polyline>
+							</svg>
+						</view>
 					</view>
 				</view>
 
@@ -182,7 +198,7 @@
 									</view>
 								</view>
 								<text class="comment-time" :class="{ 'time-active': selectedCommentId === c.id }">
-									⏱ {{ formatTime(c.timestamp) }}
+									{{ formatTime(c.timestamp) }}
 								</text>
 							</view>
 							<view class="comment-content-box" v-if="c.content || c.image_url">
@@ -310,6 +326,7 @@ const showSortPopup = ref(false)
 const sortType = ref('timestamp')
 const selectedImages = ref([]) // [{path, progress, uploading, url}]
 const replyTo = ref(null)
+const hasSorted = ref(false)
 let seekTimer = null
 let videoContext = null
 
@@ -342,6 +359,7 @@ const sortedComments = computed(() => {
 function selectSortType(type) {
 	sortType.value = type
 	showSortPopup.value = false
+	hasSorted.value = true
 }
 
 const parentComments = computed(() => {
@@ -1275,31 +1293,37 @@ function formatTime(seconds) {
 
 /* 视频元信息 */
 .video-meta-section {
-	padding: 0 24rpx 40rpx 24rpx;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-	margin-bottom: 40rpx;
-}
-
-.meta-title {
-	font-size: 34rpx;
-	font-weight: 700;
-	color: #fff;
-	display: block;
-	margin-bottom: 20rpx;
+	padding: 20rpx 24rpx;
+	margin: 0 24rpx 24rpx;
+	background: rgba(255, 255, 255, 0.04);
+	border-radius: 16rpx;
+	border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .meta-details {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 30rpx;
+	gap: 12rpx;
 }
 
 .meta-item {
 	font-size: 24rpx;
-	color: #888;
+	color: #999;
 	display: flex;
 	align-items: center;
+	gap: 6rpx;
+}
+
+.meta-text {
+	font-size: 24rpx;
+	color: #999;
+}
+
+.meta-dot {
+	color: #555;
+	font-size: 24rpx;
+	margin: 0 4rpx;
 }
 
 /* 评论输入 */
@@ -1398,14 +1422,19 @@ function formatTime(seconds) {
 .sort-btn {
 	display: flex;
 	align-items: center;
-	padding: 8rpx 16rpx;
-	background: rgba(255, 255, 255, 0.05);
-	border-radius: 8rpx;
+	padding: 8rpx 0;
 	cursor: pointer;
 }
 
 .sort-btn:active {
-	background: rgba(255, 255, 255, 0.1);
+	opacity: 0.7;
+}
+
+.sort-icon-wrapper {
+	margin-left: 6rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .sort-text {
