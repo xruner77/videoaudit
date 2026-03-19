@@ -119,12 +119,14 @@
 					<view class="img-pick-btn" @click="chooseImage">
 						<uni-icons type="camera-filled" size="24" color="#6c5ce7" />
 					</view>
-					<input
-						class="dark-input comment-text-input"
+					<textarea
+						class="dark-input comment-text-textarea"
 						v-model="commentText"
 						:placeholder="replyTo ? '回复 ' + replyTo.username + '...' : '输入审核意见...'"
 						@focus="pauseForComment"
 						maxlength="500"
+						auto-height
+						:fixed="true"
 					/>
 					<button class="btn-primary send-btn" @click="submitComment" :loading="submitting">发送</button>
 				</view>
@@ -586,6 +588,14 @@ function seekTo(commentId, time) {
 		if (seekTimer) clearTimeout(seekTimer)
 		seekMessage.value = `正在跳转至 ${formatTime(time)}`
 		
+		// 立即更新当前时间，避免其他逻辑用到旧时间
+		currentTime.value = time
+		
+		// 如果当前正在发表审核意见，同步更新标记的时间戳
+		if (commentTimestamp.value >= 0) {
+			commentTimestamp.value = time
+		}
+		
 		videoContext.seek(time)
 		videoContext.pause()
 		
@@ -692,6 +702,9 @@ function updateProgressByEvent(e, shouldSeek = false) {
 			
 			// 拖动过程中仅更新 UI
 			currentTime.value = targetTime
+			if (commentTimestamp.value >= 0) {
+				commentTimestamp.value = targetTime
+			}
 			
 			// 只有在拖动结束或点击时，才真正调用 API 执行 seek
 			if (shouldSeek && videoContext) {
@@ -744,7 +757,9 @@ function previewCommentImage(imageUrl, idx) {
 
 function startReply(comment) {
 	replyTo.value = { id: comment.id, username: comment.username }
-	pauseForComment()
+	// 立即跳转并锁定时间戳到父评论的时间
+	seekTo(comment.id, comment.timestamp)
+	commentTimestamp.value = comment.timestamp
 }
 
 function cancelReply() {
@@ -1228,8 +1243,7 @@ function formatTime(seconds) {
 	left: 0;
 	width: 100%;
 	box-sizing: border-box;
-	background: rgba(15, 15, 26, 0.95);
-	backdrop-filter: blur(10px);
+	background: #1a1a2e;
 	padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
 	border-top: 1px solid rgba(255, 255, 255, 0.08);
 	z-index: 100;
@@ -1238,19 +1252,38 @@ function formatTime(seconds) {
 .input-row {
 	display: flex;
 	gap: 16rpx;
-	align-items: center;
+	align-items: center; /* 居中对齐，保证看起来是一行 */
 }
 
-.comment-text-input {
+.comment-text-textarea {
 	flex: 1;
+	line-height: 1.48;
+	min-height: 1.48em;
+	padding: 10rpx 20rpx;
+	box-sizing: border-box;
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: 12rpx;
 }
 
 .send-btn {
 	width: 140rpx;
-	height: 72rpx;
-	line-height: 72rpx;
+	height: 64rpx;
 	padding: 0;
-	font-size: 28rpx;
+	font-size: 26rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.img-pick-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 64rpx;
+	height: 64rpx;
+	flex-shrink: 0;
+	cursor: pointer;
 }
 
 .input-hint {
@@ -1266,8 +1299,7 @@ function formatTime(seconds) {
 	left: 0;
 	width: 100%;
 	box-sizing: border-box;
-	background: rgba(15, 15, 26, 0.95);
-	backdrop-filter: blur(10px);
+	background: #1a1a2e;
 	padding: 30rpx 24rpx calc(30rpx + env(safe-area-inset-bottom));
 	border-top: 1px solid rgba(255, 255, 255, 0.08);
 	z-index: 100;
