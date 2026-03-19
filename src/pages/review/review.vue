@@ -1,6 +1,6 @@
 <template>
 	<view class="page">
-		<Header title="审片" showBack />
+		<Header :title="videoTitle || '审片'" showBack />
 
 		<view class="review-container">
 			<!-- 视频播放器区域 -->
@@ -46,14 +46,21 @@
 					>		<view class="progress-track" id="progressTrack">
 								<view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
 								<view class="progress-thumb" :style="{ left: progressPercent + '%' }"></view>
-								<!-- 评论打点 -->
+								<!-- 评论打点 (头像) -->
 								<view
 									class="comment-dot"
 									v-for="dot in commentDots"
-									:key="dot.time"
-									:style="{ left: dot.percent + '%' }"
-									@click.stop="seekTo(dot.time)"
-								></view>
+									:key="dot.id"
+									:style="{ 
+										left: dot.percent + '%', 
+										transform: `translate(-50%, -50%) translateX(${dot.offset}rpx)`,
+										zIndex: dot.zIndex,
+										background: getAvatarColor(dot.username)
+									}"
+									@click.stop="seekTo(null, dot.time)"
+								>
+									<text class="dot-avatar-letter">{{ getAvatarLetter(dot.username) }}</text>
+								</view>
 							</view>
 						</view>
 					</view>
@@ -429,10 +436,51 @@ const progressPercent = computed(() => {
 
 const commentDots = computed(() => {
 	if (duration.value <= 0) return []
-	return comments.value.map(c => ({
-		time: c.timestamp,
-		percent: (c.timestamp / duration.value) * 100
-	}))
+	
+	// 首先按时间排序
+	const sorted = [...comments.value].sort((a, b) => a.timestamp - b.timestamp)
+	const result = []
+	const threshold = 1.2 // 1.2% 的阈值，认为在同一个区域
+	
+	const clusters = []
+	sorted.forEach(c => {
+		const percent = (c.timestamp / duration.value) * 100
+		let added = false
+		for (const cluster of clusters) {
+			if (Math.abs(cluster.centerPercent - percent) < threshold) {
+				cluster.items.push(c)
+				added = true
+				break
+			}
+		}
+		if (!added) {
+			clusters.push({ centerPercent: percent, items: [c] })
+		}
+	})
+
+	clusters.forEach(cluster => {
+		// 集群内的项：最新发布的（ID更大）排在后面（在 Vue 中后渲染的在上层）
+		const items = cluster.items.sort((a, b) => a.id - b.id)
+		items.forEach((c, idx) => {
+			const percent = (c.timestamp / duration.value) * 100
+			// 只有 1 个时不偏移，多个时进行交替偏移
+			let offset = 0
+			if (items.length > 1) {
+				const mid = (items.length - 1) / 2
+				offset = (idx - mid) * 14 // 每个偏移 14rpx
+			}
+			result.push({
+				id: c.id,
+				time: c.timestamp,
+				percent,
+				offset,
+				username: c.username,
+				zIndex: 10 + idx
+			})
+		})
+	})
+
+	return result
 })
 
 onLoad((options) => {
@@ -1021,13 +1069,23 @@ function formatTime(seconds) {
 
 .comment-dot {
 	position: absolute;
-	top: -4rpx;
-	width: 14rpx;
-	height: 14rpx;
+	top: 50%;
+	width: 32rpx;
+	height: 32rpx;
 	border-radius: 50%;
-	background: #f39c12;
-	transform: translateX(-50%);
-	box-shadow: 0 0 8rpx rgba(243, 156, 18, 0.6);
+	border: 2rpx solid #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.4);
+	cursor: pointer;
+	overflow: hidden;
+}
+
+.dot-avatar-letter {
+	color: #fff;
+	font-size: 18rpx;
+	font-weight: bold;
 }
 
 .controls-bottom {
@@ -1257,8 +1315,8 @@ function formatTime(seconds) {
 
 .comment-text-textarea {
 	flex: 1;
-	line-height: 1.48;
-	min-height: 1.48em;
+	line-height: 1.6;
+	min-height: 1.6em;
 	padding: 10rpx 20rpx;
 	box-sizing: border-box;
 	background: rgba(0, 0, 0, 0.2);

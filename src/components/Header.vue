@@ -82,5 +82,10 @@ function goBack() {
 .header-title {
 	font-size: 34rpx;
 	color: #fff;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+	max-width: 450rpx; /* 限制宽度，防止挤压返回按钮 */
+	text-align: center;
 }
 </style>
