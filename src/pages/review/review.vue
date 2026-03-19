@@ -4,7 +4,7 @@
 
 		<view class="review-container">
 			<!-- 视频播放器区域 -->
-			<view class="player-section">
+			<view class="player-section" :class="{ 'is-fullscreen': isFullscreen, 'is-rotated': isRotated }">
 				<view class="video-wrapper" @click="togglePlay">
 					<video
 						id="reviewVideo"
@@ -87,8 +87,11 @@
 						</view>
 						<view class="controls-right">
 							<text class="speed-text" @click="cycleSpeed">{{ playbackRate }}倍</text>
+							<view class="ctrl-icon-btn" @click="toggleRotate" v-if="isFullscreen">
+								<view class="icon-svg icon-rotate"></view>
+							</view>
 							<view class="ctrl-icon-btn" @click="toggleFullscreen">
-								<uni-icons type="scan" size="22" color="#d0d0e0" />
+								<view class="icon-svg" :class="isFullscreen ? 'icon-shrink' : 'icon-expand'"></view>
 							</view>
 						</view>
 					</view>
@@ -179,6 +182,8 @@ const submitting = ref(false)
 const comments = ref([])
 const selectedCommentId = ref(null)
 const seekMessage = ref('')
+const isFullscreen = ref(false)
+const isRotated = ref(false)
 let seekTimer = null
 let videoContext = null
 
@@ -202,6 +207,12 @@ onLoad((options) => {
 	fetchVideoDetail()
 	fetchComments()
 	videoContext = uni.createVideoContext('reviewVideo')
+	
+	// 监听浏览器原生全屏变化 (用于支持 ESC 退出)
+	// 因为是在 onLoad 中，最好在 nextTick 或保证 document 存在
+	if (typeof document !== 'undefined') {
+		document.addEventListener('fullscreenchange', onDocFullscreenChange)
+	}
 })
 
 onUnmounted(() => {
@@ -216,6 +227,9 @@ onUnmounted(() => {
 	if (seekTimer) {
 		clearTimeout(seekTimer)
 		seekTimer = null
+	}
+	if (typeof document !== 'undefined') {
+		document.removeEventListener('fullscreenchange', onDocFullscreenChange)
 	}
 })
 
@@ -360,10 +374,43 @@ function cycleSpeed() {
 	}
 }
 
-function toggleFullscreen() {
-	if (videoContext) {
-		videoContext.requestFullScreen()
+async function toggleFullscreen() {
+	if (!isFullscreen.value) {
+		// 进入全屏 (Web级，可保留自定义控件)
+		try {
+			if (document.documentElement.requestFullscreen) {
+				await document.documentElement.requestFullscreen()
+			}
+			isFullscreen.value = true
+		} catch (e) {
+			// 如果 API 失败，也强制渲染为撑满窗口
+			isFullscreen.value = true
+		}
+	} else {
+		// 退出全屏
+		try {
+			if (document.exitFullscreen && document.fullscreenElement) {
+				await document.exitFullscreen()
+			}
+		} catch (e) {}
+		isFullscreen.value = false
+		isRotated.value = false
 	}
+}
+
+function onDocFullscreenChange() {
+	if (typeof document !== 'undefined') {
+		const isNativeFullscreen = !!document.fullscreenElement
+		if (!isNativeFullscreen && isFullscreen.value) {
+			// 用户按下了 ESC 键退出了全屏
+			isFullscreen.value = false
+			isRotated.value = false
+		}
+	}
+}
+
+function toggleRotate() {
+	isRotated.value = !isRotated.value
 }
 
 // --- 进度条手势控制 ---
@@ -496,17 +543,47 @@ function formatTime(seconds) {
 	background: #000;
 	margin-bottom: 24rpx;
 	box-shadow: 0 12rpx 30rpx rgba(0,0,0,0.6);
+	display: flex;
+	flex-direction: column;
+}
+
+.player-section.is-fullscreen {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100vw !important;
+	height: 100vh !important;
+	z-index: 9999 !important;
+	margin: 0 !important;
+	box-shadow: none;
+}
+
+.player-section.is-rotated {
+	width: 100vh !important;
+	height: 100vw !important;
+	transform: rotate(90deg);
+	transform-origin: top left;
+	left: 100vw !important;
 }
 
 .video-wrapper {
 	position: relative;
 	cursor: pointer;
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #000;
 }
 
 .video-player {
 	width: 100%;
 	height: 420rpx;
 	display: block;
+}
+
+.is-fullscreen .video-player {
+	height: 100% !important;
 }
 
 .loading-overlay {
@@ -620,33 +697,33 @@ function formatTime(seconds) {
 }
 
 .controls-bottom {
-	display: flex;
-	justify-content: space-between;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
 	align-items: center;
 	height: 80rpx;
-	padding: 0 10rpx;
+	padding: 0 10px;
 }
 
 .controls-left {
-	flex: 1;
 	display: flex;
 	align-items: center;
+	z-index: 10;
 }
 
 .time-current {
-	font-size: 26rpx;
+	font-size: 13px;
 	color: #ffffff;
 	font-variant-numeric: tabular-nums;
 }
 
 .time-separator {
-	font-size: 24rpx;
+	font-size: 12px;
 	color: #888899;
-	margin: 0 4rpx;
+	margin: 0 4px;
 }
 
 .time-total {
-	font-size: 26rpx;
+	font-size: 13px;
 	color: #888899;
 	font-variant-numeric: tabular-nums;
 }
@@ -654,11 +731,12 @@ function formatTime(seconds) {
 .controls-center {
 	display: flex;
 	align-items: center;
-	gap: 40rpx;
+	gap: 12px;
+	justify-content: center;
 }
 
 .ctrl-icon-btn {
-	padding: 10rpx;
+	padding: 4px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -668,9 +746,29 @@ function formatTime(seconds) {
 	opacity: 0.7;
 }
 
+.icon-svg {
+	width: 22px;
+	height: 22px;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+.icon-expand {
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" stroke="%23d0d0e0" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>');
+}
+
+.icon-shrink {
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" stroke="%23d0d0e0" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>');
+}
+
+.icon-rotate {
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" stroke="%23d0d0e0" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/></svg>');
+}
+
 .skip-btn-circle {
-	width: 70rpx;
-	height: 70rpx;
+	width: 36px;
+	height: 36px;
 	border-radius: 50%;
 	background: rgba(255, 255, 255, 0.06);
 	display: flex;
@@ -688,41 +786,47 @@ function formatTime(seconds) {
 .triangle-right {
 	width: 0;
 	height: 0;
-	border-top: 14rpx solid transparent;
-	border-bottom: 14rpx solid transparent;
-	border-left: 18rpx solid #ffffff;
+	border-top: 7px solid transparent;
+	border-bottom: 7px solid transparent;
+	border-left: 9px solid #ffffff;
 }
 
 .triangle-left {
 	width: 0;
 	height: 0;
-	border-top: 14rpx solid transparent;
-	border-bottom: 14rpx solid transparent;
-	border-right: 18rpx solid #ffffff;
+	border-top: 7px solid transparent;
+	border-bottom: 7px solid transparent;
+	border-right: 9px solid #ffffff;
 }
 
 .skip-icon-ff, .skip-icon-rw {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 2rpx;
+	gap: 1px;
 }
 .skip-icon-ff {
-	margin-left: 4rpx;
+	margin-left: 2px;
 }
 .skip-icon-rw {
-	margin-right: 4rpx;
+	margin-right: 2px;
 }
 
 .play-btn-circle {
-	width: 90rpx;
-	height: 90rpx;
+	width: 48px;
+	height: 48px;
 	border-radius: 50%;
 	background: rgba(255, 255, 255, 0.12);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	transition: background 0.2s;
+}
+
+.is-fullscreen .play-btn-circle,
+.is-fullscreen .skip-btn-circle {
+	width: 36px !important;
+	height: 36px !important;
 }
 
 .play-btn-circle:active {
@@ -733,39 +837,40 @@ function formatTime(seconds) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 12rpx;
+	gap: 6px;
 	width: 100%;
 	height: 100%;
 }
 
 .pause-bar {
-	width: 8rpx;
-	height: 36rpx;
+	width: 4px;
+	height: 18px;
 	background-color: #ffffff;
-	border-radius: 4rpx;
+	border-radius: 2px;
 }
 
 .play-icon-css {
 	width: 0;
 	height: 0;
-	border-top: 20rpx solid transparent;
-	border-bottom: 20rpx solid transparent;
-	border-left: 28rpx solid #ffffff;
-	margin-left: 8rpx; /* Optical center for a right-pointing triangle */
+	border-top: 10px solid transparent;
+	border-bottom: 10px solid transparent;
+	border-left: 14px solid #ffffff;
+	margin-left: 4px; /* Optical center for a right-pointing triangle */
 }
 
 .controls-right {
-	flex: 1;
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-	gap: 30rpx;
+	gap: 10px;
+	z-index: 10;
 }
 
 .speed-text {
-	font-size: 26rpx;
+	font-size: 13px;
 	color: #e2e2ea;
 	cursor: pointer;
+	white-space: nowrap;
 }
 
 /* 视频元信息 */
