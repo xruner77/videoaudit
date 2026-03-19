@@ -63,11 +63,11 @@ function goUpload() {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	height: 110rpx;
+	height: 100rpx;
 	background: #1a1a2e;
 	display: flex;
 	border-top: 1px solid rgba(255, 255, 255, 0.05);
-	padding-bottom: env(safe-area-inset-bottom);
+	padding-bottom: calc(10rpx + env(safe-area-inset-bottom));
 	z-index: 999;
 }
 
@@ -77,13 +77,12 @@ function goUpload() {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding-top: 10rpx;
 }
 
 .tab-text {
 	font-size: 20rpx;
 	color: #666;
-	margin-top: 4rpx;
+	margin-top: 2rpx;
 }
 
 .tab-text.active {
@@ -96,19 +95,19 @@ function goUpload() {
 	flex-direction: column;
 	align-items: center;
 	position: relative;
-	margin-top: -40rpx;
+	margin-top: -36rpx;
 }
 
 .upload-btn {
-	width: 100rpx;
-	height: 100rpx;
+	width: 86rpx;
+	height: 86rpx;
 	background: linear-gradient(135deg, #6c5ce7, #a855f7);
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	box-shadow: 0 8rpx 20rpx rgba(108, 92, 231, 0.4);
-	margin-bottom: 4rpx;
+	margin-bottom: 2rpx;
 	border: 6rpx solid #1a1a2e;
 }
 
