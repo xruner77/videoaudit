@@ -45,10 +45,10 @@
 						@click="onProgressClick"
 					>		<view class="progress-track" id="progressTrack">
 								<view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
-								<view class="progress-thumb" :style="{ left: progressPercent + '%' }"></view>
 								<!-- 评论打点 (头像) -->
 								<view
 									class="comment-dot"
+									:class="{ 'dot-active': selectedCommentId === dot.id }"
 									v-for="dot in commentDots"
 									:key="dot.id"
 									:style="{ 
@@ -57,7 +57,7 @@
 										zIndex: dot.zIndex,
 										background: getAvatarColor(dot.username)
 									}"
-									@click.stop="seekTo(null, dot.time)"
+									@click.stop="seekTo(dot.id, dot.time)"
 								>
 									<text class="dot-avatar-letter">{{ getAvatarLetter(dot.username) }}</text>
 								</view>
@@ -750,6 +750,7 @@ function updateProgressByEvent(e, shouldSeek = false) {
 			
 			// 拖动过程中仅更新 UI
 			currentTime.value = targetTime
+			selectedCommentId.value = null // 手动操作进度条时清除选中状态
 			if (commentTimestamp.value >= 0) {
 				commentTimestamp.value = targetTime
 			}
@@ -986,11 +987,11 @@ function formatTime(seconds) {
 .loading-spinner {
 	width: 80rpx;
 	height: 80rpx;
-	border: 6rpx solid rgba(255, 255, 255, 0.2);
+	border: 4rpx solid rgba(255, 255, 255, 0.2);
 	border-radius: 50%;
-	border-top-color: #a855f7;
+	border-top-color: #d6d6d6;
 	animation: spin 1s ease-in-out infinite;
-	box-shadow: 0 0 15rpx rgba(168, 85, 247, 0.5);
+	box-shadow: 0 0 15rpx rgba(214, 214, 214, 0.5);
 }
 
 .seek-message-text {
@@ -1043,15 +1044,15 @@ function formatTime(seconds) {
 }
 
 .progress-track {
-	height: 6rpx;
+	height: 2px;
 	background: rgba(255, 255, 255, 0.2);
-	border-radius: 3rpx;
+	border-radius: 2px;
 	position: relative;
 }
 
 .progress-fill {
 	height: 100%;
-	background: linear-gradient(90deg, #6c5ce7, #a855f7);
+	background: #d6d6d6;
 	border-radius: 3rpx;
 	transition: width 0.1s linear;
 }
@@ -1062,9 +1063,8 @@ function formatTime(seconds) {
 	width: 20rpx;
 	height: 20rpx;
 	border-radius: 50%;
-	background: #a855f7;
+	background: #ffffff;
 	transform: translate(-50%, -50%);
-	box-shadow: 0 0 8rpx rgba(168, 85, 247, 0.6);
 }
 
 .comment-dot {
@@ -1073,13 +1073,21 @@ function formatTime(seconds) {
 	width: 32rpx;
 	height: 32rpx;
 	border-radius: 50%;
-	border: 2rpx solid #fff;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.4);
 	cursor: pointer;
 	overflow: hidden;
+	transition: all 0.2s ease;
+}
+
+.comment-dot.dot-active {
+	border: 4rpx solid #f39c12;
+	width: 40rpx;
+	height: 40rpx;
+	z-index: 1000 !important;
+	box-shadow: 0 0 20rpx rgba(243, 156, 18, 0.6);
 }
 
 .dot-avatar-letter {
