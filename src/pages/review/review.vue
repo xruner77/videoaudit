@@ -966,11 +966,11 @@ function formatTime(seconds) {
 	width: 100rpx;
 	height: 100rpx;
 	border-radius: 50%;
-	background: rgba(108, 92, 231, 0.8);
+	background: rgba(0, 0, 0, 0.2);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.5);
+	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
 	pointer-events: none;
 }
 
