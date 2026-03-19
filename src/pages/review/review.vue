@@ -784,7 +784,7 @@ async function uploadImage(imgObj) {
 
 async function submitComment() {
 	const text = commentText.value.trim()
-	if (!text && !selectedImage.value) {
+	if (!text && selectedImages.value.length === 0) {
 		return uni.showToast({ title: '请输入评论内容或选择图片', icon: 'none' })
 	}
 
