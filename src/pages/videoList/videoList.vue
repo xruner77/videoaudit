@@ -173,14 +173,13 @@ function formatDuration(seconds) {
 	position: absolute;
 	bottom: 12rpx;
 	right: 12rpx;
-	background: rgba(0, 0, 0, 0.6);
-	padding: 4rpx 12rpx;
-	border-radius: 6rpx;
 }
 
 .video-duration-badge text {
-	font-size: 20rpx;
+	font-size: 22rpx;
 	color: #fff;
+	font-weight: bold;
+	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.8);
 }
 
 .video-info {
