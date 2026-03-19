@@ -31,13 +31,6 @@
 			<!-- 功能菜单 -->
 			<view class="menu-section">
 				<view class="menu-card">
-					<view class="menu-item" @click="goUpload" v-if="authStore.isLoggedIn">
-						<view class="menu-icon-wrapper" style="background: rgba(108, 92, 231, 0.15);">
-							<uni-icons type="cloud-upload" size="20" color="#6c5ce7" />
-						</view>
-						<text class="menu-label">上传视频</text>
-						<uni-icons type="right" size="16" color="#555" />
-					</view>
 					<view class="menu-item" @click="goAdmin" v-if="authStore.isAdmin">
 						<view class="menu-icon-wrapper" style="background: rgba(52, 152, 219, 0.15);">
 							<uni-icons type="gear" size="20" color="#3498db" />
@@ -111,6 +104,8 @@
 			</view>
 		</view>
 
+		<CustomTabBar activePath="/pages/profile/profile" />
+
 		<!-- 修改密码弹窗 -->
 		<view class="modal-mask" v-if="showPasswordModal" @click.self="showPasswordModal = false">
 			<view class="modal-card">
@@ -159,6 +154,7 @@
 import { ref, computed, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
+import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useAuthStore } from '../../stores/authStore'
 
 const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
@@ -354,9 +350,6 @@ function goLogin() {
 	uni.navigateTo({ url: '/pages/login/login' })
 }
 
-function goUpload() {
-	uni.navigateTo({ url: '/pages/upload/upload' })
-}
 
 function goAdmin() {
 	uni.navigateTo({ url: '/pages/admin/admin' })
