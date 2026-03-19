@@ -20,7 +20,15 @@ description: 启动本地前端开发服务器，并代理请求至线上后端
    npm run dev:h5
    ```
 
-2. **打开浏览器**
+2. **部署变动的后端文件**（如有）
+   由于本地 API 请求会代理到线上服务器，如果本次开发中修改了 `server/` 目录下的任何后端 PHP 文件，**必须先将变动的文件部署到服务器**，否则线上后端不会生效。
+   ```bash
+   # 将变动的后端文件逐个上传，例如：
+   scp -i ~/.ssh/a2.xruner.tk server/src/Routes/comments.php root@va.xruner.tk:/www/wwwroot/va.xruner.tk/server/src/Routes/comments.php
+   ```
+   > 💡 可以用 `git diff --name-only server/` 快速查看哪些后端文件发生了变化。
+
+3. **打开浏览器**
    等待几秒钟命令行就绪后，点击或复制以下本地链接到浏览器即可测试：
    👉 `http://localhost:5173`
 

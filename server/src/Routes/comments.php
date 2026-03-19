@@ -8,6 +8,7 @@ use Slim\App;
 
 /**
  * 评论路由
+ * - 获取用户评论 (需登录)
  * - 获取视频评论 (公开)
  * - 创建评论 (需登录)
  * - 删除评论 (仅创建者或管理员)
@@ -15,6 +16,26 @@ use Slim\App;
 return function (App $app, PDO $db) {
 
     $jwtSecret = 'videoaudit_jwt_secret_key_2026';
+
+    // GET /api/comments/user/{userId} - 获取用户的所有评论 (需登录)
+    // ⚠️ 必须在 /api/comments/{videoId} 之前定义，否则 "user" 会被当作 videoId
+    $app->get('/api/comments/user/{userId}', function (Request $request, Response $response, array $args) use ($db) {
+        $userId = (int) $args['userId'];
+
+        $stmt = $db->prepare('
+            SELECT c.*, u.username, v.title as video_title
+            FROM comments c
+            LEFT JOIN users u ON c.user_id = u.id
+            LEFT JOIN videos v ON c.video_id = v.id
+            WHERE c.user_id = ?
+            ORDER BY c.created_at DESC
+        ');
+        $stmt->execute([$userId]);
+        $comments = $stmt->fetchAll();
+
+        $response->getBody()->write(json_encode(['comments' => $comments]));
+        return $response->withHeader('Content-Type', 'application/json');
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
     // GET /api/comments/{videoId} - 获取视频评论 (公开)
     $app->get('/api/comments/{videoId}', function (Request $request, Response $response, array $args) use ($db) {

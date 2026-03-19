@@ -96,6 +96,7 @@ function formatDate(dateStr) {
 .page {
 	min-height: 100vh;
 	background: #0f0f1a;
+	padding-bottom: 120rpx;
 }
 
 .video-grid {
@@ -218,7 +219,7 @@ function formatDate(dateStr) {
 
 .fab {
 	position: fixed;
-	bottom: 60rpx;
+	bottom: 160rpx;
 	right: 40rpx;
 	width: 100rpx;
 	height: 100rpx;

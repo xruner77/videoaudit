@@ -22,12 +22,13 @@
 					></video>
 					
 					<!-- 缓冲 Loading 动画 -->
-					<view class="loading-overlay" v-show="isLoading">
+					<view class="loading-overlay" v-show="isLoading || seekMessage">
 						<view class="loading-spinner"></view>
+						<text class="seek-message-text" v-if="seekMessage">{{ seekMessage }}</text>
 					</view>
 					
 					<!-- 居中播放按钮 -->
-					<view class="center-play-btn" v-show="!isPlaying">
+					<view class="center-play-btn" v-show="!isPlaying && !isLoading && !seekMessage">
 						<text class="center-play-icon">▶</text>
 					</view>
 				</view>
@@ -128,7 +129,7 @@
 			<view class="comment-list">
 				<text class="section-title">审核意见 ({{ comments.length }})</text>
 
-				<view class="comment-item" v-for="c in comments" :key="c.id" @click="seekTo(c.timestamp)">
+				<view class="comment-item" v-for="c in comments" :key="c.id" @click="seekTo(c.id, c.timestamp)">
 					<view class="comment-header">
 						<view class="comment-user">
 							<view class="comment-avatar">
@@ -136,14 +137,11 @@
 							</view>
 							<text class="comment-username">{{ c.username }}</text>
 						</view>
-						<text class="comment-time">
+						<text class="comment-time" :class="{ 'time-active': selectedCommentId === c.id }">
 							⏱ {{ formatTime(c.timestamp) }}
 						</text>
 					</view>
 					<text class="comment-content">{{ c.content }}</text>
-					<view class="comment-actions" v-if="canDeleteComment(c)">
-						<text class="delete-btn" @click.stop="deleteComment(c.id)">删除</text>
-					</view>
 				</view>
 
 				<view class="empty-comments" v-if="comments.length === 0">
@@ -179,6 +177,9 @@ const commentText = ref('')
 const commentTimestamp = ref(-1)
 const submitting = ref(false)
 const comments = ref([])
+const selectedCommentId = ref(null)
+const seekMessage = ref('')
+let seekTimer = null
 let videoContext = null
 
 const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
@@ -211,6 +212,10 @@ onUnmounted(() => {
 	if (bufferTimer) {
 		clearInterval(bufferTimer)
 		bufferTimer = null
+	}
+	if (seekTimer) {
+		clearTimeout(seekTimer)
+		seekTimer = null
 	}
 })
 
@@ -285,7 +290,7 @@ function onTimeUpdate(e) {
 	duration.value = e.detail.duration
 	// 收到 timeupdate 说明在正常播放，关闭 loading
 	lastTimeUpdateTs = Date.now()
-	if (isLoading.value) {
+	if (isLoading.value && !seekMessage.value) {
 		isLoading.value = false
 	}
 }
@@ -328,10 +333,21 @@ function skip(seconds) {
 	videoContext.seek(newTime)
 }
 
-function seekTo(time) {
+function seekTo(commentId, time) {
+	if (commentId !== undefined && commentId !== null) {
+		selectedCommentId.value = commentId
+	}
 	if (videoContext && time >= 0) {
+		if (seekTimer) clearTimeout(seekTimer)
+		seekMessage.value = `正在跳转至 ${formatTime(time)}`
+		
 		videoContext.seek(time)
 		videoContext.pause()
+		
+		// 假定网络慢，展示至少 1 秒的跳转提示，或者直到有了新的 timeUpdate
+		seekTimer = setTimeout(() => {
+			seekMessage.value = ''
+		}, 1200)
 	}
 }
 
@@ -450,36 +466,6 @@ async function submitComment() {
 	}
 }
 
-function canDeleteComment(comment) {
-	if (!authStore.isLoggedIn) return false
-	return authStore.isAdmin || comment.user_id == authStore.user?.id
-}
-
-async function deleteComment(commentId) {
-	uni.showModal({
-		title: '确认删除',
-		content: '确定要删除这条评论吗？',
-		success: async (res) => {
-			if (!res.confirm) return
-			try {
-				const resp = await uni.request({
-					url: `${authStore.API_BASE}/api/comments/${commentId}`,
-					method: 'DELETE',
-					header: authStore.getAuthHeader()
-				})
-				if (resp.statusCode === 200) {
-					uni.showToast({ title: '已删除', icon: 'success' })
-					fetchComments()
-				} else {
-					throw new Error(resp.data?.error || '删除失败')
-				}
-			} catch (e) {
-				uni.showToast({ title: e.message, icon: 'none' })
-			}
-		}
-	})
-}
-
 function goLogin() {
 	uni.navigateTo({ url: '/pages/login/login' })
 }
@@ -529,20 +515,32 @@ function formatTime(seconds) {
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background: rgba(0, 0, 0, 0.4);
+	background: rgba(0, 0, 0, 0.5);
 	display: flex;
+	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	pointer-events: none;
+	backdrop-filter: blur(2px);
 }
 
 .loading-spinner {
 	width: 80rpx;
 	height: 80rpx;
-	border: 6rpx solid rgba(255, 255, 255, 0.3);
+	border: 6rpx solid rgba(255, 255, 255, 0.2);
 	border-radius: 50%;
-	border-top-color: #fff;
+	border-top-color: #a855f7;
 	animation: spin 1s ease-in-out infinite;
+	box-shadow: 0 0 15rpx rgba(168, 85, 247, 0.5);
+}
+
+.seek-message-text {
+	margin-top: 24rpx;
+	font-size: 28rpx;
+	color: #fff;
+	font-weight: 500;
+	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.8);
+	letter-spacing: 2rpx;
 }
 
 @keyframes spin {
@@ -914,6 +912,12 @@ function formatTime(seconds) {
 	padding: 6rpx 16rpx;
 	border-radius: 8rpx;
 	font-variant-numeric: tabular-nums;
+	transition: all 0.2s ease;
+}
+
+.time-active {
+	background: #f39c12 !important;
+	color: #fff !important;
 }
 
 .comment-content {

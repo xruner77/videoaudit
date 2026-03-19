@@ -112,4 +112,40 @@ return function (App $app, PDO $db) {
         $response->getBody()->write(json_encode(['user' => $userData]));
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
+
+    // PUT /api/auth/password - 修改密码 (需登录)
+    $app->put('/api/auth/password', function (Request $request, Response $response) use ($db) {
+        $user = $request->getAttribute('user');
+        $data = $request->getParsedBody();
+        $oldPassword = $data['old_password'] ?? '';
+        $newPassword = $data['new_password'] ?? '';
+
+        if (empty($oldPassword) || empty($newPassword)) {
+            $response->getBody()->write(json_encode(['error' => '请填写完整信息']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        if (strlen($newPassword) < 6) {
+            $response->getBody()->write(json_encode(['error' => '新密码至少 6 个字符']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        // 验证旧密码
+        $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
+        $stmt->execute([$user->sub]);
+        $userData = $stmt->fetch();
+
+        if (!$userData || !password_verify($oldPassword, $userData['password'])) {
+            $response->getBody()->write(json_encode(['error' => '当前密码错误']));
+            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+        }
+
+        // 更新密码
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $db->prepare('UPDATE users SET password = ? WHERE id = ?');
+        $stmt->execute([$hash, $user->sub]);
+
+        $response->getBody()->write(json_encode(['message' => '密码修改成功']));
+        return $response->withHeader('Content-Type', 'application/json');
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 };

@@ -8,6 +8,13 @@
 			}
 		},
 		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationBarTitleText": "我的",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/login/login",
 			"style": {
 				"navigationBarTitleText": "登录",
@@ -29,6 +36,13 @@
 			}
 		},
 		{
+			"path": "pages/myComments/myComments",
+			"style": {
+				"navigationBarTitleText": "我的评论",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/admin/admin",
 			"style": {
 				"navigationBarTitleText": "后台管理",
@@ -36,6 +50,37 @@
 			}
 		}
 	],
+	"tabBar": {
+		"color": "#666",
+		"selectedColor": "#a855f7",
+		"backgroundColor": "#1a1a2e",
+		"borderStyle": "black",
+		"iconfontSrc": "static/uniicons.ttf",
+		"list": [
+			{
+				"pagePath": "pages/videoList/videoList",
+				"text": "首页",
+				"iconfont": {
+					"text": "\ue662",
+					"selectedText": "\ue663",
+					"fontSize": "22px",
+					"color": "#666",
+					"selectedColor": "#a855f7"
+				}
+			},
+			{
+				"pagePath": "pages/profile/profile",
+				"text": "我的",
+				"iconfont": {
+					"text": "\ue699",
+					"selectedText": "\ue69d",
+					"fontSize": "22px",
+					"color": "#666",
+					"selectedColor": "#a855f7"
+				}
+			}
+		]
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "white",
 		"navigationBarTitleText": "视频审片系统",

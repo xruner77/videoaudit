@@ -21,12 +21,22 @@
 
 				<view class="form-group">
 					<text class="form-label">密码</text>
-					<input class="dark-input" v-model="password" placeholder="请输入密码" password maxlength="32" />
+					<view class="password-input-wrapper">
+						<input class="dark-input pr-80" v-model="password" placeholder="请输入密码" :password="!showPassword" maxlength="32" />
+						<view class="eye-icon" @click="showPassword = !showPassword">
+							<uni-icons :type="showPassword ? 'eye-filled' : 'eye-slash'" size="20" color="#888" />
+						</view>
+					</view>
 				</view>
 
 				<view class="form-group" v-if="isRegister">
 					<text class="form-label">确认密码</text>
-					<input class="dark-input" v-model="confirmPassword" placeholder="请再次输入密码" password maxlength="32" />
+					<view class="password-input-wrapper">
+						<input class="dark-input pr-80" v-model="confirmPassword" placeholder="请再次输入密码" :password="!showConfirmPassword" maxlength="32" />
+						<view class="eye-icon" @click="showConfirmPassword = !showConfirmPassword">
+							<uni-icons :type="showConfirmPassword ? 'eye-filled' : 'eye-slash'" size="20" color="#888" />
+						</view>
+					</view>
 				</view>
 
 				<button class="btn-primary login-btn" :loading="loading" @click="handleSubmit">
@@ -46,6 +56,8 @@ const isRegister = ref(false)
 const username = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 const loading = ref(false)
 
 async function handleSubmit() {
@@ -70,6 +82,8 @@ async function handleSubmit() {
 			isRegister.value = false
 			password.value = ''
 			confirmPassword.value = ''
+			showPassword.value = false
+			showConfirmPassword.value = false
 		} else {
 			await authStore.login(username.value.trim(), password.value)
 			uni.showToast({ title: '登录成功', icon: 'success' })
@@ -181,6 +195,27 @@ async function handleSubmit() {
 	color: #888;
 	margin-bottom: 12rpx;
 	display: block;
+}
+
+.password-input-wrapper {
+	position: relative;
+	width: 100%;
+}
+
+.pr-80 {
+	padding-right: 80rpx !important;
+}
+
+.eye-icon {
+	position: absolute;
+	right: 0;
+	top: 0;
+	width: 80rpx;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2;
 }
 
 .login-btn {
