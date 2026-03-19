@@ -966,8 +966,8 @@ function formatTime(seconds) {
 }
 
 .controls {
-	padding: 12rpx 20rpx 16rpx;
-	background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.3));
+	padding: 12rpx 20rpx 40rpx;
+	background: #1a1a2e;
 }
 
 .controls-top {
@@ -1539,38 +1539,39 @@ function formatTime(seconds) {
 
 /* 嵌入式子评论 */
 .replies-container {
-	margin-top: 24rpx;
-	padding: 24rpx;
-	background: #1e1e29;
-	border-radius: 12rpx;
+	margin-top: 20rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
 }
 
 .reply-item {
-	padding: 16rpx 0;
+	width: 92%;
+	margin-left: auto;
+	padding: 20rpx;
+	background: rgba(255, 255, 255, 0.035);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 16rpx;
 	cursor: pointer;
-}
-
-.reply-item + .reply-item {
-	border-top: 1px solid rgba(255, 255, 255, 0.05);
-	margin-top: 16rpx;
+	box-sizing: border-box;
 }
 
 .reply-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 16rpx;
+	margin-bottom: 12rpx;
 }
 
 .reply-user-info {
 	display: flex;
 	align-items: center;
-	gap: 16rpx;
+	gap: 12rpx;
 }
 
 .unified-avatar {
-	width: 44rpx !important;
-	height: 44rpx !important;
+	width: 40rpx !important;
+	height: 40rpx !important;
 }
 
 .reply-username {
@@ -1582,7 +1583,7 @@ function formatTime(seconds) {
 
 .reply-date {
 	font-size: 20rpx;
-	color: #777788;
+	color: #666;
 	line-height: 1.1;
 }
 
@@ -1593,8 +1594,8 @@ function formatTime(seconds) {
 }
 
 .reply-content {
-	font-size: 28rpx;
-	color: #ffffff;
+	font-size: 27rpx;
+	color: #eee;
 	line-height: 1.6;
 	word-break: break-all;
 	display: block;
