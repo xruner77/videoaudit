@@ -92,8 +92,9 @@ return function (App $app, PDO $db) {
             $filename = uniqid('vid_') . '.' . $ext;
             $file->moveTo($uploadDir . '/' . $filename);
 
-            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id, duration) VALUES (?, ?, ?, ?, ?)');
-            $stmt->execute([$title, '/uploads/' . $filename, 'local', $user->sub, $duration]);
+            $now = date('Y-m-d H:i:s');
+            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id, duration, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$title, '/uploads/' . $filename, 'local', $user->sub, $duration, $now]);
 
             $videoId = $db->lastInsertId();
 
@@ -128,8 +129,9 @@ return function (App $app, PDO $db) {
 
             $duration = (int)($data['duration'] ?? 0);
 
-            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id, duration) VALUES (?, ?, ?, ?, ?)');
-            $stmt->execute([$title, $url, 'remote', $user->sub, $duration]);
+            $now = date('Y-m-d H:i:s');
+            $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id, duration, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$title, $url, 'remote', $user->sub, $duration, $now]);
 
             $videoId = $db->lastInsertId();
 

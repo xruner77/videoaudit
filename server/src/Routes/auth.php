@@ -44,8 +44,9 @@ return function (App $app, PDO $db) {
         }
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $db->prepare('INSERT INTO users (username, password) VALUES (?, ?)');
-        $stmt->execute([$username, $hash]);
+        $now = date('Y-m-d H:i:s');
+        $stmt = $db->prepare('INSERT INTO users (username, password, created_at) VALUES (?, ?, ?)');
+        $stmt->execute([$username, $hash, $now]);
 
         $response->getBody()->write(json_encode(['message' => '注册成功']));
         return $response->withStatus(201)->withHeader('Content-Type', 'application/json');

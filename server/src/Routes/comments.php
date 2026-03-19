@@ -140,8 +140,9 @@ return function (App $app, PDO $db) {
             }
         }
 
-        $stmt = $db->prepare('INSERT INTO comments (video_id, user_id, content, timestamp, image_url, parent_id) VALUES (?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$videoId, $user->sub, $content, $timestamp, $imageUrl ?: null, $parentId]);
+        $now = date('Y-m-d H:i:s');
+        $stmt = $db->prepare('INSERT INTO comments (video_id, user_id, content, timestamp, image_url, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$videoId, $user->sub, $content, $timestamp, $imageUrl ?: null, $parentId, $now]);
 
         $commentId = $db->lastInsertId();
 
