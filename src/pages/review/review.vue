@@ -94,9 +94,7 @@
 						</view>
 						<view class="controls-right">
 							<text class="speed-text" @click="cycleSpeed">{{ playbackRate }}倍</text>
-							<view class="ctrl-icon-btn" @click="toggleRotate" v-if="isFullscreen">
-								<view class="icon-svg icon-rotate"></view>
-							</view>
+
 							<view class="ctrl-icon-btn" @click="toggleFullscreen">
 								<view class="icon-svg" :class="isFullscreen ? 'icon-shrink' : 'icon-expand'"></view>
 							</view>
@@ -185,72 +183,68 @@
 
 				<!-- 父评论 -->
 				<template v-for="c in parentComments" :key="c.id">
-					<view class="comment-item">
+					<view class="comment-item" :class="{ 'comment-item-active': selectedCommentId === c.id }">
 						<view class="comment-main" @click="seekTo(c.id, c.timestamp)">
-							<view class="comment-header">
-								<view class="comment-user">
-									<view class="comment-avatar" :style="{ background: getAvatarColor(c.username) }">
-										<text class="avatar-letter">{{ getAvatarLetter(c.username) }}</text>
-									</view>
-									<view class="user-meta">
-										<text class="comment-username">{{ c.username }}</text>
-										<text class="comment-date">{{ c.created_at }}</text>
+							<view class="comment-avatar" :style="{ background: getAvatarColor(c.username) }">
+								<text class="avatar-letter">{{ getAvatarLetter(c.username) }}</text>
+							</view>
+							<view class="comment-body">
+								<view class="comment-header">
+									<text class="comment-username">{{ c.username }}</text>
+									<text class="comment-time" :class="{ 'time-active': selectedCommentId === c.id }">
+										{{ formatTime(c.timestamp) }}
+									</text>
+								</view>
+								<view class="comment-content-box" v-if="c.content || c.image_url">
+									<text class="comment-content" v-if="c.content">{{ c.content }}</text>
+									<view class="comment-image-list" v-if="getImages(c.image_url).length > 0">
+										<image 
+											v-for="(img, idx) in getImages(c.image_url)" 
+											:key="idx" 
+											:src="getFullUrl(img)" 
+											class="comment-image" 
+											mode="widthFix" 
+											@click.stop="previewCommentImage(c.image_url, idx)" 
+										/>
 									</view>
 								</view>
-								<text class="comment-time" :class="{ 'time-active': selectedCommentId === c.id }">
-									{{ formatTime(c.timestamp) }}
-								</text>
-							</view>
-							<view class="comment-content-box" v-if="c.content || c.image_url">
-								<text class="comment-content" v-if="c.content">{{ c.content }}</text>
-								<view class="comment-image-list" v-if="getImages(c.image_url).length > 0">
-									<image 
-										v-for="(img, idx) in getImages(c.image_url)" 
-										:key="idx" 
-										:src="getFullUrl(img)" 
-										class="comment-image" 
-										mode="widthFix" 
-										@click.stop="previewCommentImage(c.image_url, idx)" 
-									/>
+								<view class="comment-actions">
+									<text class="comment-date">{{ c.created_at }}</text>
+									<text class="reply-btn" @click.stop="startReply(c)">回复</text>
 								</view>
-							</view>
-							<view class="comment-actions">
-								<text class="reply-btn" @click.stop="startReply(c)">回复</text>
 							</view>
 						</view>
 
 						<!-- 子评论（全展平，顺序往下排列） -->
 						<view class="replies-container" v-if="getAllThreadReplies(c.id).length > 0">
 							<view class="reply-item" v-for="r in getVisibleReplies(c.id)" :key="r.id" @click.stop="seekTo(c.id, c.timestamp)">
-								<view class="reply-header">
-									<view class="reply-user-info">
-										<view class="comment-avatar unified-avatar" :style="{ background: getAvatarColor(r.username) }">
-											<text class="avatar-letter-small">{{ getAvatarLetter(r.username) }}</text>
-										</view>
-										<view class="user-meta">
-											<text class="reply-username">{{ r.username }}</text>
-											<text class="reply-date">{{ r.created_at }}</text>
+								<view class="comment-avatar unified-avatar" :style="{ background: getAvatarColor(r.username) }">
+									<text class="avatar-letter-small">{{ getAvatarLetter(r.username) }}</text>
+								</view>
+								<view class="reply-body">
+									<view class="reply-header">
+										<text class="reply-username">{{ r.username }}</text>
+									</view>
+									<view class="reply-content-box">
+										<text class="reply-content">
+											<text class="reply-to-at">回复 @{{ getReplyToUsername(r.parent_id) }}：</text>
+											<text v-if="r.content">{{ r.content }}</text>
+										</text>
+										<view class="comment-image-list mt-8" v-if="getImages(r.image_url).length > 0">
+											<image 
+												v-for="(img, idx) in getImages(r.image_url)" 
+												:key="idx" 
+												:src="getFullUrl(img)" 
+												class="reply-image" 
+												mode="widthFix" 
+												@click.stop="previewCommentImage(r.image_url, idx)" 
+											/>
 										</view>
 									</view>
-								</view>
-								<view class="reply-content-box">
-									<text class="reply-content">
-										<text class="reply-to-at">回复 @{{ getReplyToUsername(r.parent_id) }}：</text>
-										<text v-if="r.content">{{ r.content }}</text>
-									</text>
-									<view class="comment-image-list mt-8" v-if="getImages(r.image_url).length > 0">
-										<image 
-											v-for="(img, idx) in getImages(r.image_url)" 
-											:key="idx" 
-											:src="getFullUrl(img)" 
-											class="reply-image" 
-											mode="widthFix" 
-											@click.stop="previewCommentImage(r.image_url, idx)" 
-										/>
+									<view class="reply-actions">
+										<text class="reply-date">{{ r.created_at }}</text>
+										<text class="reply-btn" @click.stop="startReply(r)">回复</text>
 									</view>
-								</view>
-								<view class="reply-actions">
-									<text class="reply-btn" @click.stop="startReply(r)">回复</text>
 								</view>
 							</view>
 							
@@ -262,7 +256,7 @@
 								<text class="fold-text" v-else>
 									收起回复
 								</text>
-								<uni-icons :type="isExpanded(c.id) ? 'top' : 'bottom'" size="12" color="#a855f7" />
+								<uni-icons :type="isExpanded(c.id) ? 'top' : 'bottom'" size="12" color="#999" />
 							</view>
 						</view>
 					</view>
@@ -1443,21 +1437,36 @@ function formatTime(seconds) {
 }
 
 .comment-item {
-	padding: 24rpx 0;
-	border-top: 1px solid #2e2e2e;
+	padding: 24rpx 12rpx; /* Horizontal padding for better background box */
+	border-top: 1px solid rgba(255, 255, 255, 0.04);
+	margin: 0 -12rpx; /* Align content by pulling it back with negative margin */
+	transition: background 0.2s ease;
+}
+
+.comment-item:first-child {
+	border-top: none;
+}
+
+.comment-item-active {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 12rpx;
+}
+
+.comment-main {
+	display: flex;
+	gap: 20rpx;
 }
 
 .comment-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 20rpx;
+	margin-bottom: 8rpx;
 }
 
-.comment-user {
-	display: flex;
-	align-items: center;
-	gap: 16rpx;
+.comment-body {
+	flex: 1;
+	min-width: 0;
 }
 
 .comment-avatar {
@@ -1483,11 +1492,7 @@ function formatTime(seconds) {
 	font-weight: 600;
 }
 
-.user-meta {
-	display: flex;
-	flex-direction: column;
-	gap: 6rpx;
-}
+
 
 .comment-username {
 	font-size: 28rpx;
@@ -1499,17 +1504,17 @@ function formatTime(seconds) {
 .comment-date {
 	font-size: 22rpx;
 	color: #777788;
-	line-height: 1.1;
 }
 
 .comment-time {
-	font-size: 28rpx;
-	color: #f39c12; /* Distinct color for timestamp */
-	background: rgba(243, 156, 18, 0.15);
-	padding: 6rpx 16rpx;
-	border-radius: 8rpx;
+	font-size: 26rpx;
+	color: #f39c12;
+	background: rgba(243, 156, 18, 0.1);
+	padding: 4rpx 14rpx;
+	border-radius: 6rpx;
 	font-variant-numeric: tabular-nums;
 	transition: all 0.2s ease;
+	height: fit-content;
 }
 
 .time-active {
@@ -1518,7 +1523,7 @@ function formatTime(seconds) {
 }
 
 .comment-content {
-	font-size: 32rpx;
+	font-size: 30rpx;
 	color: #ffffff;
 	line-height: 1.6;
 	word-break: break-all;
@@ -1536,13 +1541,15 @@ function formatTime(seconds) {
 }
 
 .comment-actions {
-	margin-top: 12rpx;
-	text-align: right;
+	margin-top: 8rpx;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 
 .reply-btn {
 	font-size: 24rpx;
-	color: #6c5ce7;
+	color: #888899;
 	cursor: pointer;
 }
 
@@ -1571,13 +1578,13 @@ function formatTime(seconds) {
 	align-items: center;
 	padding: 12rpx 16rpx;
 	margin-bottom: 12rpx;
-	background: rgba(108, 92, 231, 0.12);
+	background: rgba(255, 255, 255, 0.05);
 	border-radius: 8rpx;
 }
 
 .reply-hint-text {
 	font-size: 24rpx;
-	color: #a0a0e0;
+	color: #999;
 }
 
 .img-preview-row {
@@ -1664,37 +1671,35 @@ function formatTime(seconds) {
 	margin-top: 8rpx !important;
 }
 
-/* 嵌入式子评论 */
-.replies-container {
-	margin-top: 20rpx;
-	display: flex;
-	flex-direction: column;
-	gap: 16rpx;
-}
-
 .reply-item {
-	width: 92%;
-	margin-left: auto;
-	padding: 20rpx;
-	background: rgba(255, 255, 255, 0.035);
-	border: 1px solid rgba(255, 255, 255, 0.06);
-	border-radius: 16rpx;
+	display: flex;
+	gap: 16rpx;
+	padding: 16rpx 0;
 	cursor: pointer;
 	box-sizing: border-box;
+}
+
+.reply-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.replies-container {
+	margin-top: 12rpx;
+	padding-left: 80rpx; /* Align replies under the parent's comment body */
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
 }
 
 .reply-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 12rpx;
+	margin-bottom: 4rpx;
 }
 
-.reply-user-info {
-	display: flex;
-	align-items: center;
-	gap: 12rpx;
-}
+
 
 .unified-avatar {
 	width: 40rpx !important;
@@ -1705,19 +1710,18 @@ function formatTime(seconds) {
 	font-size: 24rpx;
 	color: #c0c0d0;
 	font-weight: 500;
-	line-height: 1.1;
+	line-height: 1;
+	margin: 0;
 }
 
 .reply-date {
 	font-size: 20rpx;
 	color: #666;
-	line-height: 1.1;
 }
 
 .reply-content-box {
 	display: flex;
 	flex-direction: column;
-	padding-left: 52rpx;
 }
 
 .reply-content {
@@ -1726,10 +1730,11 @@ function formatTime(seconds) {
 	line-height: 1.6;
 	word-break: break-all;
 	display: block;
+	margin: 0;
 }
 
 .reply-to-at {
-	color: #a855f7;
+	color: #9999aa;
 	font-weight: 600;
 	margin-right: 8rpx;
 }
@@ -1745,8 +1750,10 @@ function formatTime(seconds) {
 }
 
 .reply-actions {
-	margin-top: 12rpx;
-	text-align: right;
+	margin-top: 8rpx;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 
 .replies-fold-ctrl {
@@ -1764,7 +1771,7 @@ function formatTime(seconds) {
 
 .fold-text {
 	font-size: 26rpx;
-	color: #a855f7;
+	color: #999;
 	font-weight: 500;
 }
 
