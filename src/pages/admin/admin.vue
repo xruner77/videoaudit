@@ -192,6 +192,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '@/components/Header.vue'
+import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
 
 const authStore = useAuthStore()
