@@ -209,7 +209,7 @@
 									</view>
 								</view>
 								<view class="comment-actions">
-									<text class="comment-date">{{ c.created_at }}</text>
+									<text class="comment-date">{{ formatRelativeTime(c.created_at) }}</text>
 									<text class="reply-btn" @click.stop="startReply(c)">回复</text>
 								</view>
 							</view>
@@ -242,7 +242,7 @@
 										</view>
 									</view>
 									<view class="reply-actions">
-										<text class="reply-date">{{ r.created_at }}</text>
+										<text class="reply-date">{{ formatRelativeTime(r.created_at) }}</text>
 										<text class="reply-btn" @click.stop="startReply(r)">回复</text>
 									</view>
 								</view>
@@ -917,6 +917,18 @@ function formatTime(seconds) {
 	const m = Math.floor(seconds / 60)
 	const s = Math.floor(seconds % 60)
 	return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function formatRelativeTime(dateStr) {
+	if (!dateStr) return '';
+	const now = new Date();
+	const past = new Date(dateStr.replace(/-/g, '/'));
+	const diff = (now - past) / 1000;
+	if (diff < 60) return '刚刚';
+	if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+	if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+	if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
+	return dateStr.split(' ')[0];
 }
 </script>
 
