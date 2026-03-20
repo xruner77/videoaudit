@@ -1793,12 +1793,18 @@ function formatRelativeTime(dateStr) {
 	background: #e74c3c; /* 只有点击时变红 */
 }
 
-/* 评论中的图片列表 */
 .comment-image-list {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 12rpx;
 	margin-top: 16rpx;
+}
+
+.comment-image {
+	width: 180rpx;
+	height: 180rpx;
+	object-fit: cover;
+	border-radius: 8rpx;
 }
 
 .reply-image {
