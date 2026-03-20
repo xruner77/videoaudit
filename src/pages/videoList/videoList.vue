@@ -68,6 +68,12 @@
 		<view class="fab" @click="goUpload" v-if="authStore.isLoggedIn">
 			<text class="fab-icon"><uni-icons type="plusempty" size="24" color="#fff"/></text>
 		</view>
+
+		<!-- 首页底部页脚 -->
+		<view class="footer">
+			<image class="footer-logo" src="/static/logo_company.png" mode="aspectFit"></image>
+			<text class="footer-copyright">© 桂林三新网络传媒有限责任公司 版权所有</text>
+		</view>
 	</view>
 </template>
 
@@ -159,7 +165,7 @@ function getVideoThumbUrl(video) {
 .page {
 	min-height: 100vh;
 	background: #0f0f1a;
-	padding-bottom: 120rpx;
+	padding-bottom: 60rpx;
 }
 
 .search-bar-container {
@@ -357,5 +363,27 @@ function getVideoThumbUrl(video) {
 	font-size: 48rpx;
 	color: #fff;
 	font-weight: 300;
+}
+
+/* 页脚样式 */
+.footer {
+	padding: 60rpx 0 100rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.footer-logo {
+	width: 120rpx;
+	height: 120rpx;
+	margin-bottom: 20rpx;
+	opacity: 0.6;
+}
+
+.footer-copyright {
+	font-size: 22rpx;
+	color: #444;
+	letter-spacing: 1rpx;
 }
 </style>

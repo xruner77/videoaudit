@@ -16,7 +16,7 @@
 import { useAuthStore } from '../stores/authStore'
 
 defineProps({
-	title: { type: String, default: '视频审片系统' },
+	title: { type: String, default: '生活网审片系统' },
 	showBack: { type: Boolean, default: false }
 })
 

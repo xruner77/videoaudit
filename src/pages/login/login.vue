@@ -4,7 +4,7 @@
 		<view class="login-container">
 			<view class="login-logo">
 				<text class="logo-icon">🎬</text>
-				<text class="logo-title">视频审片系统</text>
+				<text class="logo-title">生活网审片系统</text>
 				<text class="logo-subtitle">Video Audit System</text>
 			</view>
 
