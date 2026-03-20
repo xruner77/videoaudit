@@ -4,17 +4,45 @@
 
 		<view class="admin-container" v-if="authStore.isAdmin">
 			<!-- 管理 Tab -->
-			<view class="tab-bar">
-				<text :class="['tab-item', tab === 'videos' && 'tab-active']" @click="tab = 'videos'">
-					🎬 视频管理
-				</text>
-				<text :class="['tab-item', tab === 'comments' && 'tab-active']" @click="tab = 'comments'">
-					💬 评论管理
-				</text>
+			<view class="admin-tabs">
+				<view class="tab-header">
+					<view 
+						:class="['tab-item', tab === 'videos' && 'tab-active']" 
+						@click="switchTab('videos')"
+					>
+						视频管理
+					</view>
+					<view 
+						:class="['tab-item', tab === 'comments' && 'tab-active']" 
+						@click="switchTab('comments')"
+					>
+						评论管理
+					</view>
+				</view>
+				<!-- 底部指示条 -->
+				<view class="tab-indicator-container">
+					<view :class="['tab-indicator', tab === 'comments' && 'at-right']"></view>
+				</view>
 			</view>
 
 			<!-- 视频管理 -->
 			<view v-if="tab === 'videos'">
+				<view class="filter-section">
+					<view class="search-box-wrapper">
+						<uni-icons type="search" size="18" color="#888" class="search-icon" />
+						<input 
+							class="search-input" 
+							v-model="videoQuery" 
+							placeholder="搜索视频标题..."
+							confirm-type="search"
+							@confirm="onSearchVideos"
+						/>
+						<view class="clear-btn" v-if="videoQuery" @click="clearVideoSearch">
+							<uni-icons type="closeempty" size="14" color="#888" />
+						</view>
+					</view>
+				</view>
+
 				<view 
 					class="admin-item-card" 
 					v-for="v in videos" 
@@ -63,20 +91,58 @@
 						</view>
 					</view>
 				</view>
-				<view class="empty-state" v-if="videos.length === 0">
-					<text>暂无视频</text>
+				<view class="load-more-status" v-if="videos.length > 0">
+					<text v-if="loadingVideos">正在加载...</text>
+					<text v-else-if="hasMoreVideos" @click="fetchVideos(videoPage + 1)">加载更多视频</text>
+					<text v-else>—— 已加载全部 ——</text>
+				</view>
+				<view class="empty-state" v-if="videos.length === 0 && !loadingVideos">
+					<text>暂无相关视频</text>
 				</view>
 			</view>
 
 			<!-- 评论管理 -->
 			<view v-if="tab === 'comments'">
 				<view class="filter-section">
-					<text class="form-label">选择视频:</text>
-					<picker :range="videoNames" @change="onVideoFilterChange">
-						<view class="dark-input picker-display">
-							{{ selectedVideoName || '全部视频' }}
+					<view class="search-box-wrapper">
+						<uni-icons type="search" size="18" color="#888" class="search-icon" />
+						<input 
+							class="search-input" 
+							v-model="videoSearchQuery" 
+							placeholder="按视频标题过滤..."
+							@input="showSearchResult = true"
+						/>
+						<view class="clear-btn" v-if="videoSearchQuery" @click="clearVideoSearch">
+							<uni-icons type="closeempty" size="14" color="#888" />
 						</view>
-					</picker>
+					</view>
+					
+					<!-- 结果下拉列表 -->
+					<view class="search-results-list" v-if="showSearchResult && filteredVideoOptions.length > 0">
+						<view 
+							class="search-result-item"
+							:class="{ active: !selectedVideoId }" 
+							@click="selectVideoFilter(null)"
+						>
+							<text>全部视频</text>
+						</view>
+						<view 
+							class="search-result-item" 
+							v-for="v in filteredVideoOptions" 
+							:key="v.id"
+							:class="{ active: selectedVideoId === v.id }"
+							@click="selectVideoFilter(v)"
+						>
+							<view class="result-thumb" v-if="v.type === 'local'">
+								<video :src="v.url + '#t=0.5'" muted :controls="false" />
+							</view>
+							<view class="result-info">
+								<text class="result-title">{{ v.title }}</text>
+								<text class="result-uploader">{{ v.uploader }}</text>
+							</view>
+						</view>
+					</view>
+					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
 
 				<view class="admin-item" v-for="c in filteredComments" :key="c.id">
@@ -90,8 +156,15 @@
 						<text class="action-btn action-danger" @click="deleteComment(c.id)">删除</text>
 					</view>
 				</view>
-				<view class="empty-state" v-if="filteredComments.length === 0">
-					<text>暂无评论</text>
+				
+				<view class="load-more-status" v-if="allComments.length > 0">
+					<text v-if="loadingComments">正在加载...</text>
+					<text v-else-if="hasMoreComments" @click="fetchAdminComments(commentPage + 1)">加载更多评论</text>
+					<text v-else>—— 已加载全部 ——</text>
+				</view>
+
+				<view class="empty-state" v-if="allComments.length === 0 && !loadingComments">
+					<text>暂无相关评论</text>
 				</view>
 			</view>
 		</view>
@@ -108,69 +181,139 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import Header from '../../components/Header.vue'
-import { useAuthStore } from '../../stores/authStore'
+import Header from '@/components/Header.vue'
+import { useAuthStore } from '@/stores/authStore'
 
 const authStore = useAuthStore()
 
 const tab = ref('videos')
 const videos = ref([])
+const videoOptions = ref([]) // For selector
 const allComments = ref([])
 const selectedVideoId = ref(null)
 const expandedId = ref(null)
 
-const videoNames = computed(() => {
-	return ['全部视频', ...videos.value.map(v => v.title)]
-})
+// Video pagination
+const videoQuery = ref('')
+const videoPage = ref(1)
+const hasMoreVideos = ref(true)
+const loadingVideos = ref(false)
 
-const selectedVideoName = computed(() => {
-	if (!selectedVideoId.value) return '全部视频'
-	const video = videos.value.find(v => v.id === selectedVideoId.value)
-	return video?.title || '全部视频'
-})
-
-const filteredComments = computed(() => {
-	if (!selectedVideoId.value) return allComments.value
-	return allComments.value.filter(c => c.video_id == selectedVideoId.value)
-})
+// Comment pagination
+const videoSearchQuery = ref('') // Search in selector
+const commentSearchQuery = ref('') // Real search q
+const commentPage = ref(1)
+const hasMoreComments = ref(true)
+const loadingComments = ref(false)
+const showSearchResult = ref(false) // Selector dropdown
 
 onShow(() => {
 	if (!authStore.isAdmin) return
-	fetchVideos()
+	refreshVideos()
+	refreshComments()
+	fetchVideoOptions()
 })
 
-async function fetchVideos() {
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET'
-		})
-		if (res.statusCode === 200) {
-			videos.value = res.data.videos || []
-			// 获取所有视频的评论
-			fetchAllComments()
-		}
-	} catch (e) {
-		console.error(e)
+function switchTab(newTab) {
+	tab.value = newTab
+	if (newTab === 'videos') {
+		if (videos.value.length === 0) refreshVideos()
+	} else {
+		if (allComments.value.length === 0) refreshComments()
 	}
 }
 
-async function fetchAllComments() {
-	const all = []
-	for (const v of videos.value) {
-		try {
-			const res = await uni.request({
-				url: `${authStore.API_BASE}/api/comments/${v.id}`,
-				method: 'GET'
-			})
-			if (res.statusCode === 200) {
-				all.push(...(res.data.comments || []))
-			}
-		} catch (e) {
-			console.error(e)
+async function fetchVideoOptions() {
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/videos/all-names`,
+			header: authStore.getAuthHeader()
+		})
+		if (res.data && res.data.videos) {
+			videoOptions.value = res.data.videos
 		}
+	} catch (e) {
+		console.error('Fetch video options failed:', e)
 	}
-	allComments.value = all
+}
+
+const filteredVideoOptions = computed(() => {
+	if (!videoSearchQuery.value) return videoOptions.value
+	const q = videoSearchQuery.value.toLowerCase()
+	return videoOptions.value.filter(v => 
+		v.title.toLowerCase().includes(q) || 
+		(v.uploader && v.uploader.toLowerCase().includes(q))
+	)
+})
+
+function refreshVideos() {
+	videos.value = []
+	videoPage.value = 1
+	hasMoreVideos.value = true
+	fetchVideos(1)
+}
+
+function onSearchVideos() {
+	refreshVideos()
+}
+
+function clearVideoSearch() {
+	videoQuery.value = ''
+	refreshVideos()
+}
+
+async function fetchVideos(page = 1) {
+	if (loadingVideos.value) return
+	loadingVideos.value = true
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/videos`,
+			data: {
+				q: videoQuery.value,
+				page: page,
+				limit: 20
+			}
+		})
+		if (res.data && res.data.videos) {
+			if (page === 1) videos.value = res.data.videos
+			else videos.value = [...videos.value, ...res.data.videos]
+			
+			videoPage.value = page
+			hasMoreVideos.value = videos.value.length < (res.data.total || 0)
+		}
+	} catch (e) {
+		console.error('Fetch videos failed:', e)
+	} finally {
+		loadingVideos.value = false
+	}
+}
+
+async function fetchAdminComments(page = 1) {
+	if (loadingComments.value) return
+	loadingComments.value = true
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/admin/comments`,
+			data: {
+				video_id: selectedVideoId.value,
+				q: commentSearchQuery.value,
+				page: page,
+				limit: 20
+			},
+			header: authStore.getAuthHeader()
+		})
+		if (res.data && res.data.comments) {
+			if (page === 1) allComments.value = res.data.comments
+			else allComments.value = [...allComments.value, ...res.data.comments]
+			
+			commentPage.value = page
+			hasMoreComments.value = allComments.value.length < (res.data.total || 0)
+		}
+	} catch (e) {
+		console.error('Fetch admin comments failed:', e)
+	} finally {
+		loadingComments.value = false
+	}
 }
 
 function onVideoFilterChange(e) {
@@ -180,6 +323,24 @@ function onVideoFilterChange(e) {
 	} else {
 		selectedVideoId.value = videos.value[index - 1]?.id || null
 	}
+}
+
+function selectVideoFilter(video) {
+	if (!video) {
+		selectedVideoId.value = null
+		videoSearchQuery.value = ''
+	} else {
+		selectedVideoId.value = video.id
+		videoSearchQuery.value = video.title
+	}
+	showSearchResult.value = false
+	refreshComments()
+}
+
+function clearVideoSearch() {
+	videoSearchQuery.value = ''
+	selectedVideoId.value = null
+	refreshComments()
 }
 
 function toggleExpand(id) {
@@ -207,7 +368,7 @@ async function deleteVideo(id) {
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
-					fetchVideos()
+					refreshVideos()
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
 				}
@@ -232,7 +393,7 @@ async function deleteComment(id) {
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
-					fetchAllComments()
+					refreshComments()
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
 				}
@@ -262,45 +423,166 @@ function formatTime(seconds) {
 <style scoped>
 
 .admin-container {
-	padding: 24rpx;
+	padding: 0 30rpx 40rpx;
 }
 
-.tab-bar {
+.admin-tabs {
+	position: sticky;
+	top: 0;
+	background: #0f0f1a;
+	z-index: 100;
+	padding-top: 20rpx;
+	margin-bottom: 40rpx;
+}
+
+.tab-header {
 	display: flex;
-	background: rgba(255, 255, 255, 0.04);
-	border-radius: 12rpx;
-	padding: 6rpx;
-	margin-bottom: 30rpx;
+	justify-content: space-around;
+	padding: 10rpx 0;
 }
 
 .tab-item {
-	flex: 1;
-	text-align: center;
-	padding: 18rpx 0;
-	font-size: 26rpx;
+	font-size: 30rpx;
 	color: #666;
-	border-radius: 10rpx;
+	padding: 20rpx 0;
+	transition: all 0.3s ease;
+	font-weight: 500;
 }
 
 .tab-active {
-	background: linear-gradient(135deg, #6c5ce7, #a855f7);
 	color: #fff;
 	font-weight: 600;
 }
 
+.tab-indicator-container {
+	height: 4rpx;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 2rpx;
+	position: relative;
+}
+
+.tab-indicator {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 50%;
+	height: 100%;
+	background: linear-gradient(90deg, #6c5ce7, #a855f7);
+	border-radius: 2rpx;
+	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	transform: translateX(0);
+}
+
+.at-right {
+	transform: translateX(100%);
+}
+
 .filter-section {
-	margin-bottom: 24rpx;
+	margin-bottom: 30rpx;
+	position: relative;
 }
 
-.form-label {
-	font-size: 24rpx;
-	color: #888;
-	margin-bottom: 12rpx;
+.search-box-wrapper {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 12rpx;
+	height: 80rpx;
+	display: flex;
+	align-items: center;
+	padding: 0 24rpx;
+	position: relative;
+	z-index: 101;
+}
+
+.search-icon {
+	margin-right: 16rpx;
+}
+
+.search-input {
+	flex: 1;
+	font-size: 26rpx;
+	color: #fff;
+}
+
+.clear-btn {
+	padding: 10rpx;
+}
+
+.search-results-list {
+	position: absolute;
+	top: 90rpx;
+	left: 0;
+	right: 0;
+	background: #1a1a2e;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 12rpx;
+	max-height: 500rpx;
+	overflow-y: auto;
+	z-index: 102;
+	box-shadow: 0 10rpx 40rpx rgba(0,0,0,0.5);
+	animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+	from { opacity: 0; transform: translateY(-20rpx); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.search-result-item {
+	display: flex;
+	align-items: center;
+	padding: 20rpx 24rpx;
+	border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.search-result-item:active {
+	background: rgba(255,255,255,0.05);
+}
+
+.search-result-item.active {
+	background: rgba(108, 92, 231, 0.15);
+}
+
+.result-thumb {
+	width: 80rpx;
+	height: 60rpx;
+	background: #000;
+	border-radius: 6rpx;
+	margin-right: 20rpx;
+	overflow: hidden;
+}
+
+.result-thumb video {
+	width: 100%;
+	height: 100%;
+}
+
+.result-info {
+	flex: 1;
+	overflow: hidden;
+}
+
+.result-title {
+	font-size: 26rpx;
+	color: #e0e0e0;
 	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.picker-display {
-	font-size: 28rpx;
+.result-uploader {
+	font-size: 18rpx;
+	color: #666;
+}
+
+.search-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 99;
 }
 
 .admin-item-card {
@@ -439,6 +721,13 @@ function formatTime(seconds) {
 	color: #666;
 	margin-top: 6rpx;
 	display: block;
+}
+
+.load-more-status {
+	text-align: center;
+	padding: 40rpx 0;
+	font-size: 24rpx;
+	color: #444;
 }
 
 .empty-state {

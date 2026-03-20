@@ -1,6 +1,21 @@
 <template>
 	<view class="page">
 		<Header title="视频审片" />
+		<view class="search-bar-container">
+			<view class="search-bar">
+				<uni-icons type="search" size="18" color="#888" class="search-icon" />
+				<input 
+					class="search-input" 
+					v-model="searchQuery" 
+					placeholder="搜索视频标题..." 
+					confirm-type="search"
+					@confirm="onSearch"
+				/>
+				<view class="clear-btn" v-if="searchQuery" @click="clearSearch">
+					<uni-icons type="closeempty" size="14" color="#888" />
+				</view>
+			</view>
+		</view>
 
 		<view class="video-grid">
 			<view class="video-card" v-for="video in videos" :key="video.id" @click="goReview(video.id)">
@@ -41,10 +56,13 @@
 				</view>
 			</view>
 
-			<view class="empty-state" v-if="!loading && videos.length === 0">
-				<text class="empty-icon"><uni-icons type="info" size="48" color="#444"/></text>
-				<text class="empty-text">暂无视频</text>
-				<text class="empty-hint">点击右上角上传第一个视频</text>
+			<view class="empty-state" v-if="videos.length === 0 && !loading">
+				<text>暂无相关视频</text>
+			</view>
+			<view class="load-more-status" v-if="videos.length > 0">
+				<text v-if="loading">加载中...</text>
+				<text v-else-if="!hasMore">—— 已加载全部视频 ——</text>
+				<text v-else>继续滚动加载</text>
 			</view>
 		</view>
 
@@ -56,30 +74,68 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import Header from '../../components/Header.vue'
-import { useAuthStore } from '../../stores/authStore'
+import { onShow, onReachBottom } from '@dcloudio/uni-app'
+import { useAuthStore } from '@/stores/authStore'
+import Header from '@/components/Header.vue'
 
 const authStore = useAuthStore()
 const videos = ref([])
 const loading = ref(false)
+const searchQuery = ref('')
+const page = ref(1)
+const hasMore = ref(true)
+const limit = 10
 
 onShow(() => {
-	fetchVideos()
+	onSearch()
 })
 
-async function fetchVideos() {
+onReachBottom(() => {
+	if (hasMore.value && !loading.value) {
+		fetchVideos(page.value + 1)
+	}
+})
+
+function onSearch() {
+	videos.value = []
+	page.value = 1
+	hasMore.value = true
+	fetchVideos(1)
+}
+
+function clearSearch() {
+	searchQuery.value = ''
+	onSearch()
+}
+
+async function fetchVideos(targetPage = 1) {
+	if (loading.value) return
 	loading.value = true
+	
 	try {
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET'
+			method: 'GET',
+			data: {
+				q: searchQuery.value,
+				page: targetPage,
+				limit: limit
+			}
 		})
-		if (res.statusCode === 200) {
-			videos.value = res.data.videos || []
+		
+		if (res.statusCode === 200 && res.data) {
+			const newVideos = res.data.videos || []
+			if (targetPage === 1) {
+				videos.value = newVideos
+			} else {
+				videos.value = [...videos.value, ...newVideos]
+			}
+			
+			page.value = targetPage
+			hasMore.value = videos.value.length < (res.data.total || 0)
 		}
 	} catch (e) {
-		console.error('Failed to fetch videos:', e)
+		console.error('Fetch videos failed:', e)
 	} finally {
 		loading.value = false
 	}
@@ -124,8 +180,40 @@ function getVideoThumbUrl(video) {
 	padding-bottom: 120rpx;
 }
 
+.search-bar-container {
+	padding: 20rpx 30rpx;
+	background: #0f0f1a;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+
+.search-bar {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 40rpx;
+	height: 72rpx;
+	display: flex;
+	align-items: center;
+	padding: 0 24rpx;
+}
+
+.search-icon {
+	margin-right: 16rpx;
+}
+
+.search-input {
+	flex: 1;
+	font-size: 26rpx;
+	color: #fff;
+}
+
+.clear-btn {
+	padding: 10rpx;
+}
+
 .video-grid {
-	padding: 20rpx;
+	padding: 20rpx 30rpx 100rpx;
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
 	gap: 20rpx;

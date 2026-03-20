@@ -211,14 +211,15 @@
 								</view>
 								<view class="comment-actions">
 									<text class="comment-date">{{ formatRelativeTime(c.created_at) }}</text>
-									<text class="reply-btn" @click.stop="startReply(c)">回复</text>
+									<text class="reply-btn" @click.stop="onReply(c)">回复</text>
+									<text class="reply-btn delete-btn" v-if="authStore.isAdmin || c.user_id == authStore.user?.sub" @click.stop="deleteComment(c.id)">删除</text>
 								</view>
 							</view>
 						</view>
 
 						<!-- 子评论（全展平，顺序往下排列） -->
-						<view class="replies-container" v-if="getAllThreadReplies(c.id).length > 0">
-							<view class="reply-item" v-for="r in getVisibleReplies(c.id)" :key="r.id" @click.stop="seekTo(c.id, c.timestamp)">
+						<view class="replies-container" v-if="c.replies && c.replies.length > 0">
+							<view class="reply-item" v-for="r in c.replies" :key="r.id" @click.stop="onCommentClick(c)">
 								<view class="comment-avatar unified-avatar" :style="{ background: getAvatarColor(r.username) }">
 									<text class="avatar-letter-small">{{ getAvatarLetter(r.username) }}</text>
 								</view>
@@ -244,26 +245,21 @@
 									</view>
 									<view class="reply-actions">
 										<text class="reply-date">{{ formatRelativeTime(r.created_at) }}</text>
-										<text class="reply-btn" @click.stop="startReply(r)">回复</text>
+										<text class="reply-btn" @click.stop="onReply(r)">回复</text>
+										<text class="reply-btn delete-btn" v-if="authStore.isAdmin || r.user_id == authStore.user?.sub" @click.stop="deleteComment(r.id)">删除</text>
 									</view>
 								</view>
-							</view>
-							
-							<!-- 展开/收起控制 -->
-							<view class="replies-fold-ctrl" v-if="getAllThreadReplies(c.id).length > 3" @click.stop="toggleExpand(c.id)">
-								<text class="fold-text" v-if="!isExpanded(c.id)">
-									查看更多 {{ getAllThreadReplies(c.id).length - 3 }} 条回复...
-								</text>
-								<text class="fold-text" v-else>
-									收起回复
-								</text>
-								<uni-icons :type="isExpanded(c.id) ? 'top' : 'bottom'" size="12" color="#999" />
 							</view>
 						</view>
 					</view>
 				</template>
 
-				<view class="empty-comments" v-if="comments.length === 0">
+				<view class="load-more-comments" v-if="comments.length > 0">
+					<text v-if="loadingComments">正在加载...</text>
+					<text v-else-if="hasMoreComments" @click="fetchComments(currentCommentPage + 1)">加载更多评论</text>
+					<text v-else class="no-more">—— 已加载全部评论 ——</text>
+				</view>
+				<view class="empty-comments" v-if="comments.length === 0 && !loadingComments">
 					<text>暂无审核意见</text>
 				</view>
 			</view>
@@ -313,14 +309,19 @@ const commentText = ref('')
 const commentTimestamp = ref(-1)
 const submitting = ref(false)
 const comments = ref([])
-const selectedCommentId = ref(null)
+const markers = ref([]) // For timeline dots
+const activeCommentId = ref(null) // For highlighting comments in list and dots
+const currentCommentPage = ref(1)
+const hasMoreComments = ref(true)
+const loadingComments = ref(false)
+const commentLimit = 10 // Number of comments to load per page
+const selectedImages = ref([]) // [{path, progress, uploading, url}]
+const replyTo = ref(null)
 const seekMessage = ref('')
 const isFullscreen = ref(false)
 const isRotated = ref(false)
 const showSortPopup = ref(false)
 const sortType = ref('timestamp')
-const selectedImages = ref([]) // [{path, progress, uploading, url}]
-const replyTo = ref(null)
 const hasSorted = ref(false)
 let seekTimer = null
 let videoContext = null
@@ -336,33 +337,43 @@ const sortLabel = computed(() => {
 })
 
 const sortedComments = computed(() => {
-	const list = [...comments.value]
+	// Group comments by parent_id
+	const commentMap = new Map(comments.value.map(c => [c.id, { ...c, replies: [] }]));
+
+	const rootComments = [];
+	commentMap.forEach(comment => {
+		if (comment.parent_id && commentMap.has(comment.parent_id)) {
+			commentMap.get(comment.parent_id).replies.push(comment);
+		} else {
+			rootComments.push(comment);
+		}
+	});
+
+	// Sort replies within each root comment by creation time
+	rootComments.forEach(root => {
+		root.replies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+	});
+
+	// Sort root comments based on the selected sortType
+	const list = [...rootComments];
 	switch(sortType.value) {
 		case 'timestamp':
-			return list.sort((a, b) => a.timestamp - b.timestamp)
+			return list.sort((a, b) => a.timestamp - b.timestamp);
 		case 'newest':
-			return list.sort((a, b) => b.id - a.id)
+			return list.sort((a, b) => b.id - a.id);
 		case 'oldest':
-			return list.sort((a, b) => a.id - b.id)
+			return list.sort((a, b) => a.id - b.id);
 		case 'reviewer':
-			return list.sort((a, b) => a.username.localeCompare(b.username))
+			return list.sort((a, b) => a.username.localeCompare(b.username));
 		default:
-			return list
+			return list;
 	}
-})
+});
 
 function selectSortType(type) {
 	sortType.value = type
 	showSortPopup.value = false
 	hasSorted.value = true
-}
-
-const parentComments = computed(() => {
-	return sortedComments.value.filter(c => !c.parent_id)
-})
-
-function getReplies(parentId) {
-	return comments.value.filter(c => c.parent_id === parentId).sort((a, b) => a.id - b.id)
 }
 
 function getFullUrl(path) {
@@ -385,45 +396,6 @@ function getReplyToUsername(parentId) {
 	if (!parentId) return ''
 	const p = comments.value.find(c => c.id === parentId)
 	return p ? p.username : '未知'
-}
-
-function getAllThreadReplies(rootId) {
-	// 简单查找所有以 rootId 为根的后代
-	let result = []
-	let processedIds = new Set()
-	let queue = [rootId]
-	
-	while(queue.length > 0) {
-		let pid = queue.shift()
-		let children = comments.value.filter(c => c.parent_id === pid)
-		for (let child of children) {
-			if (!processedIds.has(child.id)) {
-				result.push(child)
-				processedIds.add(child.id)
-				queue.push(child.id)
-			}
-		}
-	}
-	// 按 ID 排序确保时间顺序（对应回复顺序向下排列）
-	return result.sort((a, b) => a.id - b.id)
-}
-
-const expandedComments = ref({}) // { rootId: true/false }
-
-function toggleExpand(rootId) {
-	expandedComments.value[rootId] = !expandedComments.value[rootId]
-}
-
-function isExpanded(rootId) {
-	return !!expandedComments.value[rootId]
-}
-
-function getVisibleReplies(rootId) {
-	const all = getAllThreadReplies(rootId)
-	if (isExpanded(rootId) || all.length <= 3) {
-		return all
-	}
-	return all.slice(0, 3)
 }
 
 const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
@@ -450,8 +422,8 @@ const progressPercent = computed(() => {
 const commentDots = computed(() => {
 	if (duration.value <= 0) return []
 	
-	// 首先按时间排序
-	const sorted = [...comments.value].sort((a, b) => a.timestamp - b.timestamp)
+	// Use markers for timeline dots
+	const sorted = [...markers.value].sort((a, b) => a.timestamp - b.timestamp)
 	const result = []
 	const threshold = 1.2 // 1.2% 的阈值，认为在同一个区域
 	
@@ -499,7 +471,8 @@ const commentDots = computed(() => {
 onLoad((options) => {
 	videoId.value = parseInt(options.id)
 	fetchVideoDetail()
-	fetchComments()
+	fetchMarkers() // Fetch markers for timeline dots
+	fetchComments(1) // Fetch first page of comments
 	videoContext = uni.createVideoContext('reviewVideo')
 	
 	// 监听浏览器原生全屏变化 (用于支持 ESC 退出)
@@ -567,25 +540,54 @@ async function fetchVideoDetail() {
 	}
 }
 
+async function fetchMarkers() {
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/comments/${videoId.value}/markers`,
+			method: 'GET'
+		})
+		if (res.statusCode === 200) {
+			markers.value = res.data.markers || []
+		}
+	} catch (e) {
+		console.error('Failed to fetch markers:', e)
+	}
+}
+
+async function fetchComments(page = 1) {
+	if (loadingComments.value) return
+	loadingComments.value = true
+	
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
+			method: 'GET',
+			data: {
+				page: page,
+				limit: commentLimit
+			}
+		})
+		if (res.statusCode === 200) {
+			if (page === 1) {
+				comments.value = res.data.comments || []
+			} else {
+				comments.value = [...comments.value, ...(res.data.comments || [])]
+			}
+			currentCommentPage.value = page
+			hasMoreComments.value = comments.value.length < (res.data.total || 0)
+		}
+	} catch (e) {
+		console.error('Failed to fetch comments:', e)
+	} finally {
+		loadingComments.value = false
+	}
+}
+
 function incrementViewCount(id) {
 	uni.request({
 		url: `${authStore.API_BASE}/api/videos/${id}/view`,
 		method: 'POST'
 	})
-}
-
-async function fetchComments() {
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
-			method: 'GET'
-		})
-		if (res.statusCode === 200) {
-			comments.value = res.data.comments || []
-		}
-	} catch (e) {
-		console.error('Failed to fetch comments:', e)
-	}
 }
 
 function onPlay() {
@@ -646,7 +648,7 @@ function skip(seconds) {
 
 function seekTo(commentId, time) {
 	if (commentId !== undefined && commentId !== null) {
-		selectedCommentId.value = commentId
+		activeCommentId.value = commentId
 	}
 	if (videoContext && time >= 0) {
 		if (seekTimer) clearTimeout(seekTimer)
@@ -766,7 +768,7 @@ function updateProgressByEvent(e, shouldSeek = false) {
 			
 			// 拖动过程中仅更新 UI
 			currentTime.value = targetTime
-			selectedCommentId.value = null // 手动操作进度条时清除选中状态
+			activeCommentId.value = null // 手动操作进度条时清除选中状态
 			if (commentTimestamp.value >= 0) {
 				commentTimestamp.value = targetTime
 			}
@@ -820,7 +822,11 @@ function previewCommentImage(imageUrl, idx) {
 	uni.previewImage({ urls, current: urls[idx || 0] })
 }
 
-function startReply(comment) {
+function onCommentClick(comment) {
+	seekTo(comment.id, comment.timestamp)
+}
+
+function onReply(comment) {
 	replyTo.value = { id: comment.id, username: comment.username }
 	// 立即跳转并锁定时间戳到父评论的时间
 	seekTo(comment.id, comment.timestamp)
@@ -870,9 +876,9 @@ async function submitComment() {
 
 	submitting.value = true
 	try {
-		// 上传所有未上传的图片
+		// Upload all selected images
 		const uploadPromises = selectedImages.value.map(img => {
-			if (img.url) return Promise.resolve(img.url)
+			if (img.url) return Promise.resolve(img.url) // Already uploaded
 			return uploadImage(img)
 		})
 		
@@ -901,7 +907,8 @@ async function submitComment() {
 			commentTimestamp.value = -1
 			selectedImages.value = []
 			replyTo.value = null
-			fetchComments()
+			fetchComments(1) // Refresh comments from page 1
+			fetchMarkers() // Refresh markers
 		} else {
 			throw new Error(res.data?.error || '评论失败')
 		}
@@ -910,6 +917,33 @@ async function submitComment() {
 	} finally {
 		submitting.value = false
 	}
+}
+
+async function deleteComment(commentId) {
+	uni.showModal({
+		title: '确认删除',
+		content: '确定要删除这条评论吗？',
+		success: async (res) => {
+			if (res.confirm) {
+				try {
+					const response = await uni.request({
+						url: `${authStore.API_BASE}/api/comments/${commentId}`,
+						method: 'DELETE',
+						header: authStore.getAuthHeader()
+					})
+					if (response.statusCode === 200) {
+						uni.showToast({ title: '删除成功', icon: 'success' })
+						fetchComments(1) // Refresh comments
+						fetchMarkers() // Refresh markers
+					} else {
+						throw new Error(response.data?.error || '删除失败')
+					}
+				} catch (e) {
+					uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+				}
+			}
+		}
+	})
 }
 
 function goLogin() {
@@ -1828,6 +1862,7 @@ function formatRelativeTime(dateStr) {
 .delete-btn {
 	font-size: 22rpx;
 	color: #e74c3c;
+	margin-left: 20rpx;
 }
 
 .empty-comments {
@@ -1838,6 +1873,17 @@ function formatRelativeTime(dateStr) {
 .empty-comments text {
 	color: #555;
 	font-size: 26rpx;
+}
+
+.load-more-comments {
+	text-align: center;
+	padding: 30rpx 0;
+	font-size: 24rpx;
+	color: #6c5ce7;
+}
+
+.load-more-comments .no-more {
+	color: #444;
 }
 
 /* --------------- 排序弹窗 --------------- */

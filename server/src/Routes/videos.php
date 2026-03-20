@@ -21,18 +21,50 @@ return function (App $app, PDO $db) {
         mkdir($uploadDir, 0755, true);
     }
 
-    // GET /api/videos - 视频列表 (公开)
+    // GET /api/videos - 视频列表 (支持搜索和分页)
     $app->get('/api/videos', function (Request $request, Response $response) use ($db) {
-        $stmt = $db->query('
+        $queryParams = $request->getQueryParams();
+        $q = $queryParams['q'] ?? '';
+        $page = (int)($queryParams['page'] ?? 1);
+        $limit = (int)($queryParams['limit'] ?? 20);
+        $offset = ($page - 1) * $limit;
+
+        $sql = ' FROM videos v LEFT JOIN users u ON v.user_id = u.id ';
+        $params = [];
+        if ($q) {
+            $sql .= ' WHERE v.title LIKE ? ';
+            $params[] = "%$q%";
+        }
+
+        // 获取总数
+        $countStmt = $db->prepare("SELECT COUNT(*) " . $sql);
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        // 获取分页数据
+        $stmt = $db->prepare('
             SELECT v.*, u.username as uploader,
                    (SELECT COUNT(*) FROM comments c WHERE c.video_id = v.id) as comment_count
-            FROM videos v
-            LEFT JOIN users u ON v.user_id = u.id
+            ' . $sql . '
             ORDER BY v.created_at DESC
+            LIMIT ? OFFSET ?
         ');
+        
+        // 绑定参数
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k + 1, $v);
+        }
+        $stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $videos = $stmt->fetchAll();
 
-        $response->getBody()->write(json_encode(['videos' => $videos]));
+        $response->getBody()->write(json_encode([
+            'videos' => $videos,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit
+        ]));
         return $response->withHeader('Content-Type', 'application/json');
     });
 
@@ -44,6 +76,14 @@ return function (App $app, PDO $db) {
         $response->getBody()->write(json_encode(['message' => 'success']));
         return $response->withHeader('Content-Type', 'application/json');
     });
+
+    // GET /api/videos/all-names - 获取所有视频名称 (仅管理员, 用于过滤器)
+    $app->get('/api/videos/all-names', function (Request $request, Response $response) use ($db) {
+        $stmt = $db->query('SELECT id, title, url, type, (SELECT username FROM users WHERE id = v.user_id) as uploader FROM videos v ORDER BY title ASC');
+        $videos = $stmt->fetchAll();
+        $response->getBody()->write(json_encode(['videos' => $videos]));
+        return $response->withHeader('Content-Type', 'application/json');
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret, true));
 
     // 需要登录的视频路由组
     $app->group('/api/videos', function (RouteCollectorProxy $group) use ($db, $uploadDir) {

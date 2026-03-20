@@ -19,6 +19,63 @@ return function (App $app, PDO $db) {
     $jwtSecret = 'videoaudit_jwt_secret_key_2026';
     $uploadDir = __DIR__ . '/../../uploads/images';
 
+    // GET /api/admin/comments - 获取所有评论 (管理员专用, 支持分页和搜索)
+    $app->get('/api/admin/comments', function (Request $request, Response $response) use ($db) {
+        $queryParams = $request->getQueryParams();
+        $videoId = $queryParams['video_id'] ?? null;
+        $q = $queryParams['q'] ?? '';
+        $page = (int)($queryParams['page'] ?? 1);
+        $limit = (int)($queryParams['limit'] ?? 20);
+        $offset = ($page - 1) * $limit;
+
+        $sql = ' FROM comments c 
+                LEFT JOIN users u ON c.user_id = u.id 
+                LEFT JOIN videos v ON c.video_id = v.id ';
+        $params = [];
+        $where = [];
+        if ($videoId) {
+            $where[] = 'c.video_id = ?';
+            $params[] = $videoId;
+        }
+        if ($q) {
+            $where[] = '(c.content LIKE ? OR v.title LIKE ?)';
+            $params[] = "%$q%";
+            $params[] = "%$q%";
+        }
+
+        if ($where) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        // 获取总数
+        $countStmt = $db->prepare("SELECT COUNT(*) " . $sql);
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        // 获取分页数据
+        $stmt = $db->prepare("
+            SELECT c.*, u.username, v.title as video_title
+            $sql
+            ORDER BY c.created_at DESC
+            LIMIT ? OFFSET ?
+        ");
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k + 1, $v);
+        }
+        $stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $comments = $stmt->fetchAll();
+
+        $response->getBody()->write(json_encode([
+            'comments' => $comments,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit
+        ]));
+        return $response->withHeader('Content-Type', 'application/json');
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret, true));
+
     // GET /api/comments/user/{userId} - 获取用户的所有评论 (需登录)
     $app->get('/api/comments/user/{userId}', function (Request $request, Response $response, array $args) use ($db) {
         $userId = (int) $args['userId'];
@@ -39,21 +96,50 @@ return function (App $app, PDO $db) {
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
-    // GET /api/comments/{videoId} - 获取视频评论 (公开)
+    // GET /api/comments/{videoId} - 获取视频评论 (支持分页)
     $app->get('/api/comments/{videoId}', function (Request $request, Response $response, array $args) use ($db) {
         $videoId = (int) $args['videoId'];
+        $queryParams = $request->getQueryParams();
+        $page = (int)($queryParams['page'] ?? 1);
+        $limit = (int)($queryParams['limit'] ?? 50); // 默认 50 条
+        $offset = ($page - 1) * $limit;
 
+        // 获取总数
+        $countStmt = $db->prepare('SELECT COUNT(*) FROM comments WHERE video_id = ?');
+        $countStmt->execute([$videoId]);
+        $total = (int)$countStmt->fetchColumn();
+
+        // 获取分页数据
         $stmt = $db->prepare('
             SELECT c.*, u.username
             FROM comments c
             LEFT JOIN users u ON c.user_id = u.id
             WHERE c.video_id = ?
             ORDER BY c.timestamp ASC
+            LIMIT ? OFFSET ?
         ');
-        $stmt->execute([$videoId]);
+        $stmt->bindValue(1, $videoId, PDO::PARAM_INT);
+        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $comments = $stmt->fetchAll();
 
-        $response->getBody()->write(json_encode(['comments' => $comments]));
+        $response->getBody()->write(json_encode([
+            'comments' => $comments,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit
+        ]));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+    // GET /api/comments/{videoId}/markers - 获取视频评论的所有打点信息 (不分页, 用于时间轴)
+    $app->get('/api/comments/{videoId}/markers', function (Request $request, Response $response, array $args) use ($db) {
+        $videoId = (int) $args['videoId'];
+        $stmt = $db->prepare('SELECT id, timestamp FROM comments WHERE video_id = ? ORDER BY timestamp ASC');
+        $stmt->execute([$videoId]);
+        $markers = $stmt->fetchAll();
+        $response->getBody()->write(json_encode(['markers' => $markers]));
         return $response->withHeader('Content-Type', 'application/json');
     });
 
