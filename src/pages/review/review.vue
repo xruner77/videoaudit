@@ -169,7 +169,7 @@
 			<!-- 评论列表 -->
 			<view class="comment-list">
 				<view class="comment-list-header">
-					<text class="section-title">审核意见 ({{ comments.length }})</text>
+					<text class="section-title">审核意见 ({{ dataList.length }})</text>
 					<view class="sort-btn" @click="showSortPopup = true">
 						<text class="sort-text">{{ hasSorted ? sortLabel : '切换排序' }}</text>
 						<!-- 自定义上下箭头 SVG -->
@@ -286,9 +286,10 @@
 
 <script setup>
 import { ref, computed, onUnmounted, getCurrentInstance } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
+import { usePagination } from '../../composables/usePagination'
 
 const authStore = useAuthStore()
 
@@ -308,13 +309,30 @@ const playbackRate = ref(1)
 const commentText = ref('')
 const commentTimestamp = ref(-1)
 const submitting = ref(false)
-const comments = ref([])
+
+const {
+	dataList,
+	loading: loadingComments,
+	hasMore: hasMoreComments,
+	loadNextPage,
+	reset: resetComments
+} = usePagination(async (params) => {
+	const res = await uni.request({
+		url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
+		method: 'GET',
+		data: params
+	})
+	if (res.statusCode === 200) {
+		return {
+			data: res.data.comments,
+			total: res.data.total
+		}
+	}
+	return { data: [], total: 0 }
+}, { limit: 20 })
+
 const markers = ref([]) // For timeline dots
 const activeCommentId = ref(null) // For highlighting comments in list and dots
-const currentCommentPage = ref(1)
-const hasMoreComments = ref(true)
-const loadingComments = ref(false)
-const commentLimit = 10 // Number of comments to load per page
 const selectedImages = ref([]) // [{path, progress, uploading, url}]
 const replyTo = ref(null)
 const seekMessage = ref('')
@@ -394,7 +412,7 @@ function getImages(imageUrl) {
 
 function getReplyToUsername(parentId) {
 	if (!parentId) return ''
-	const p = comments.value.find(c => c.id === parentId)
+	const p = dataList.value.find(c => c.id === parentId)
 	return p ? p.username : '未知'
 }
 
@@ -472,7 +490,8 @@ onLoad((options) => {
 	videoId.value = parseInt(options.id)
 	fetchVideoDetail()
 	fetchMarkers() // Fetch markers for timeline dots
-	fetchComments(1) // Fetch first page of comments
+	resetComments()
+	loadNextPage() // Fetch first page of comments
 	videoContext = uni.createVideoContext('reviewVideo')
 	
 	// 监听浏览器原生全屏变化 (用于支持 ESC 退出)
@@ -480,6 +499,10 @@ onLoad((options) => {
 	if (typeof document !== 'undefined') {
 		document.addEventListener('fullscreenchange', onDocFullscreenChange)
 	}
+})
+
+onReachBottom(() => {
+	loadNextPage()
 })
 
 onUnmounted(() => {
@@ -907,7 +930,8 @@ async function submitComment() {
 			commentTimestamp.value = -1
 			selectedImages.value = []
 			replyTo.value = null
-			fetchComments(1) // Refresh comments from page 1
+			resetComments()
+			loadNextPage() // Refresh comments from page 1
 			fetchMarkers() // Refresh markers
 		} else {
 			throw new Error(res.data?.error || '评论失败')
@@ -933,7 +957,8 @@ async function deleteComment(commentId) {
 					})
 					if (response.statusCode === 200) {
 						uni.showToast({ title: '删除成功', icon: 'success' })
-						fetchComments(1) // Refresh comments
+						resetComments()
+						loadNextPage() // Refresh comments
 						fetchMarkers() // Refresh markers
 					} else {
 						throw new Error(response.data?.error || '删除失败')

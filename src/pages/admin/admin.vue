@@ -45,7 +45,7 @@
 
 				<view 
 					class="admin-item-card" 
-					v-for="v in videos" 
+					v-for="v in videoList" 
 					:key="v.id"
 					:class="{ 'item-expanded': expandedId === v.id }"
 				>
@@ -94,12 +94,12 @@
 						</view>
 					</view>
 				</view>
-				<view class="load-more-status" v-if="videos.length > 0">
+				<view class="load-more-status" v-if="videoList.length > 0">
 					<text v-if="loadingVideos">正在加载...</text>
-					<text v-else-if="hasMoreVideos" @click="fetchVideos(videoPage + 1)">加载更多视频</text>
+					<text v-else-if="hasMoreVideos" @click="loadNextVideos">加载更多视频</text>
 					<text v-else>—— 已加载全部 ——</text>
 				</view>
-				<view class="empty-state" v-if="videos.length === 0 && !loadingVideos">
+				<view class="empty-state" v-if="videoList.length === 0 && !loadingVideos">
 					<text>暂无相关视频</text>
 				</view>
 			</view>
@@ -149,7 +149,7 @@
 					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
 
-				<view class="admin-item" v-for="c in allComments" :key="c.id">
+				<view class="admin-item" v-for="c in commentList" :key="c.id">
 					<view class="admin-item-info">
 						<text class="admin-item-title">{{ c.content }}</text>
 						<text class="admin-item-meta">
@@ -167,13 +167,13 @@
 					</view>
 				</view>
 				
-				<view class="load-more-status" v-if="allComments.length > 0">
+				<view class="load-more-status" v-if="commentList.length > 0">
 					<text v-if="loadingComments">正在加载...</text>
-					<text v-else-if="hasMoreComments" @click="fetchAdminComments(commentPage + 1)">加载更多评论</text>
+					<text v-else-if="hasMoreComments" @click="loadNextComments">加载更多评论</text>
 					<text v-else>—— 已加载全部 ——</text>
 				</view>
 
-				<view class="empty-state" v-if="allComments.length === 0 && !loadingComments">
+				<view class="empty-state" v-if="commentList.length === 0 && !loadingComments">
 					<text>暂无相关评论</text>
 				</view>
 			</view>
@@ -192,31 +192,66 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '@/components/Header.vue'
-import { useAuthStore } from '@/stores/authStore'
+import { usePagination } from '@/composables/usePagination'
 
 const authStore = useAuthStore()
 
 const tab = ref('videos')
-const videos = ref([])
 const videoOptions = ref([]) // For selector
-const allComments = ref([])
 const selectedVideoId = ref(null)
 const expandedId = ref(null)
 
 // Video pagination
 const videoQuery = ref('')
-const videoPage = ref(1)
-const hasMoreVideos = ref(true)
-const loadingVideos = ref(false)
+const {
+	dataList: videoList,
+	loading: loadingVideos,
+	hasMore: hasMoreVideos,
+	loadNextPage: loadNextVideos,
+	reset: resetVideos
+} = usePagination(async (params) => {
+	const res = await uni.request({
+		url: `${authStore.API_BASE}/api/videos`,
+		method: 'GET',
+		data: {
+			...params,
+			q: videoQuery.value
+		}
+	})
+	if (res.statusCode === 200) {
+		return { data: res.data.videos, total: res.data.total }
+	}
+	return { data: [], total: 0 }
+}, { limit: 20 })
+
 
 // Comment pagination
 const videoSearchQuery = ref('') // Search in selector
 const commentSearchQuery = ref('') // Real search q
-const commentPage = ref(1)
-const hasMoreComments = ref(true)
-const loadingComments = ref(false)
 const showSearchResult = ref(false) // Selector dropdown
 
+const {
+	dataList: commentList,
+	loading: loadingComments,
+	hasMore: hasMoreComments,
+	loadNextPage: loadNextComments,
+	reset: resetComments
+} = usePagination(async (params) => {
+	const res = await uni.request({
+		url: `${authStore.API_BASE}/api/comments/admin`,
+		method: 'GET',
+		header: authStore.getAuthHeader(),
+		data: {
+			...params,
+			q: commentSearchQuery.value,
+			video_id: selectedVideoId.value || undefined
+		}
+	})
+	if (res.statusCode === 200) {
+		return { data: res.data.comments, total: res.data.total }
+	}
+	return { data: [], total: 0 }
+}, { limit: 20 })
 onShow(() => {
 	if (!authStore.isAdmin) return
 	refreshVideos()
@@ -227,9 +262,9 @@ onShow(() => {
 function switchTab(newTab) {
 	tab.value = newTab
 	if (newTab === 'videos') {
-		if (videos.value.length === 0) refreshVideos()
+		if (videoList.value.length === 0) refreshVideos()
 	} else {
-		if (allComments.value.length === 0) refreshComments()
+		if (commentList.value.length === 0) refreshComments()
 	}
 }
 
@@ -257,10 +292,8 @@ const filteredVideoOptions = computed(() => {
 })
 
 function refreshVideos() {
-	videos.value = []
-	videoPage.value = 1
-	hasMoreVideos.value = true
-	fetchVideos(1)
+	resetVideos()
+	loadNextVideos()
 }
 
 function onSearchVideos() {
@@ -268,10 +301,8 @@ function onSearchVideos() {
 }
 
 function refreshComments() {
-	allComments.value = []
-	commentPage.value = 1
-	hasMoreComments.value = true
-	fetchAdminComments(1)
+	resetComments()
+	loadNextComments()
 }
 
 function handleClearVideoQuery() {
@@ -279,59 +310,6 @@ function handleClearVideoQuery() {
 	refreshVideos()
 }
 
-async function fetchVideos(page = 1) {
-	if (loadingVideos.value) return
-	loadingVideos.value = true
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/videos`,
-			data: {
-				q: videoQuery.value,
-				page: page,
-				limit: 20
-			}
-		})
-		if (res.data && res.data.videos) {
-			if (page === 1) videos.value = res.data.videos
-			else videos.value = [...videos.value, ...res.data.videos]
-			
-			videoPage.value = page
-			hasMoreVideos.value = videos.value.length < (res.data.total || 0)
-		}
-	} catch (e) {
-		console.error('Fetch videos failed:', e)
-	} finally {
-		loadingVideos.value = false
-	}
-}
-
-async function fetchAdminComments(page = 1) {
-	if (loadingComments.value) return
-	loadingComments.value = true
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/admin/comments`,
-			data: {
-				video_id: selectedVideoId.value,
-				q: commentSearchQuery.value,
-				page: page,
-				limit: 20
-			},
-			header: authStore.getAuthHeader()
-		})
-		if (res.data && res.data.comments) {
-			if (page === 1) allComments.value = res.data.comments
-			else allComments.value = [...allComments.value, ...res.data.comments]
-			
-			commentPage.value = page
-			hasMoreComments.value = allComments.value.length < (res.data.total || 0)
-		}
-	} catch (e) {
-		console.error('Fetch admin comments failed:', e)
-	} finally {
-		loadingComments.value = false
-	}
-}
 
 function onVideoFilterChange(e) {
 	const index = e.detail.value

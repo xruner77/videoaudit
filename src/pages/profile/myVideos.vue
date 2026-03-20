@@ -3,8 +3,11 @@
 		<Header title="我的视频" showBack />
 
 		<view class="video-list">
-			<view class="video-group-card" v-for="v in myVideos" :key="v.id">
+			<view class="video-group-card" v-for="v in dataList" :key="v.id">
 				<view class="video-item-content" @click="goReview(v.id)">
+					<view class="video-item-icon-small">
+						<uni-icons type="videocam" size="20" color="#6c5ce7" />
+					</view>
 					<view class="video-item-main">
 						<text class="video-item-title">{{ v.title }}</text>
 						<view class="video-item-tags">
@@ -19,7 +22,13 @@
 				</view>
 			</view>
 
-			<view class="empty-state" v-if="!loading && myVideos.length === 0">
+			<view class="load-more-status" v-if="dataList.length > 0">
+				<text v-if="loading">正在加载...</text>
+				<text v-else-if="hasMore">继续滚动加载</text>
+				<text v-else>—— 已加载全部视频 ——</text>
+			</view>
+
+			<view class="empty-state" v-if="!loading && dataList.length === 0">
 				<uni-icons type="videocam" size="40" color="#444" />
 				<text class="empty-text">暂无上传的视频</text>
 			</view>
@@ -28,41 +37,47 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
+import { usePagination } from '../../composables/usePagination'
 
 const authStore = useAuthStore()
-const allVideos = ref([])
-const loading = ref(false)
 
-const myVideos = computed(() => {
-	return allVideos.value.filter(v => v.user_id == authStore.user?.id)
+const {
+	dataList,
+	loading,
+	hasMore,
+	loadNextPage,
+	reset
+} = usePagination(async (params) => {
+	const res = await uni.request({
+		url: `${authStore.API_BASE}/api/videos`,
+		method: 'GET',
+		data: {
+			...params,
+			user_id: authStore.user?.id
+		}
+	})
+	if (res.statusCode === 200) {
+		return {
+			data: res.data.videos,
+			total: res.data.total
+		}
+	}
+	return { data: [], total: 0 }
 })
 
 onShow(() => {
 	if (authStore.isLoggedIn) {
-		fetchVideos()
+		reset()
+		loadNextPage()
 	}
 })
 
-async function fetchVideos() {
-	loading.value = true
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET'
-		})
-		if (res.statusCode === 200) {
-			allVideos.value = res.data.videos || []
-		}
-	} catch (e) {
-		console.error(e)
-	} finally {
-		loading.value = false
-	}
-}
+onReachBottom(() => {
+	loadNextPage()
+})
 
 async function deleteVideo(id) {
 	uni.showModal({
@@ -78,7 +93,8 @@ async function deleteVideo(id) {
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
-					fetchVideos()
+					reset()
+					loadNextPage()
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
 				}
@@ -116,8 +132,18 @@ function formatDate(dateStr) {
 
 .video-item-content {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
+}
+
+.video-item-icon-small {
+	width: 50rpx;
+	height: 50rpx;
+	background: rgba(108, 92, 231, 0.1);
+	border-radius: 10rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
 }
 
 .video-item-main {
@@ -166,6 +192,14 @@ function formatDate(dateStr) {
 
 .delete-btn-text:active {
 	color: #e74c3c;
+}
+
+.load-more-status {
+	width: 100%;
+	text-align: center;
+	padding: 60rpx 0;
+	font-size: 24rpx;
+	color: #444;
 }
 
 .empty-state {

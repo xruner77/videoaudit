@@ -31,14 +31,14 @@
 			<!-- 数据统计入口 -->
 			<view class="stat-grid">
 				<view class="stat-card" @click="goMyVideos">
-					<text class="stat-number">{{ myVideos.length }}</text>
+					<text class="stat-number">{{ videoTotal }}</text>
 					<view class="stat-label-row">
 						<text class="stat-icon">🎬</text>
 						<text class="stat-label">我的视频</text>
 					</view>
 				</view>
 				<view class="stat-card" @click="goMyComments">
-					<text class="stat-number">{{ myComments.length }}</text>
+					<text class="stat-number">{{ commentTotal }}</text>
 					<view class="stat-label-row">
 						<text class="stat-icon">💬</text>
 						<text class="stat-label">我的评论</text>
@@ -105,17 +105,12 @@ function getAvatarLetter(username) {
 }
 
 const authStore = useAuthStore()
-const myComments = ref([])
+const commentTotal = ref(0)
 const loadingComments = ref(false)
 
-
 // 视频列表相关
-const allVideos = ref([])
+const videoTotal = ref(0)
 const loadingVideos = ref(false)
-
-const myVideos = computed(() => {
-	return allVideos.value.filter(v => v.user_id == authStore.user?.id)
-})
 
 // 按视频分组评论
 const groupedComments = computed(() => {
@@ -148,10 +143,14 @@ async function fetchVideos() {
 	try {
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET'
+			method: 'GET',
+			data: {
+				user_id: authStore.user?.id,
+				limit: 1 // 仅需要总数，减少数据传输
+			}
 		})
 		if (res.statusCode === 200) {
-			allVideos.value = res.data.videos || []
+			videoTotal.value = res.data.total || 0
 		}
 	} catch (e) {
 		console.error(e)
@@ -166,10 +165,13 @@ async function fetchMyComments() {
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/comments/user/${authStore.user.id}`,
 			method: 'GET',
-			header: authStore.getAuthHeader()
+			header: authStore.getAuthHeader(),
+			data: {
+				limit: 1 // 仅需要总数
+			}
 		})
 		if (res.statusCode === 200) {
-			myComments.value = res.data.comments || []
+			commentTotal.value = res.data.total || 0
 		}
 	} catch (e) {
 		console.error('Failed to fetch my comments:', e)

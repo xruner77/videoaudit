@@ -18,7 +18,7 @@
 		</view>
 
 		<view class="video-grid">
-			<view class="video-card" v-for="video in videos" :key="video.id" @click="goReview(video.id)">
+			<view class="video-card" v-for="video in dataList" :key="video.id" @click="goReview(video.id)">
 				<view class="video-thumb">
 					<video 
 						class="thumb-video" 
@@ -50,16 +50,15 @@
 						<view class="meta-stats">
 							<text class="meta-date">{{ formatDate(video.created_at) }}</text>
 							<text class="meta-comments" v-if="video.views !== undefined"><uni-icons type="eye" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.views }}</text>
-							<text class="meta-comments" v-else><uni-icons type="eye" size="12" color="#aaa" />{{ (video.id * 89 + 123) % 900 + 100 }}</text>
 						</view>
 					</view>
 				</view>
 			</view>
 
-			<view class="empty-state" v-if="videos.length === 0 && !loading">
+			<view class="empty-state" v-if="dataList.length === 0 && !loading">
 				<text>暂无相关视频</text>
 			</view>
-			<view class="load-more-status" v-if="videos.length > 0">
+			<view class="load-more-status" v-if="dataList.length > 0">
 				<text v-if="loading">正在加载...</text>
 				<text v-else-if="hasMore">继续滚动加载</text>
 				<text v-else>—— 已加载全部视频 ——</text>
@@ -77,68 +76,51 @@ import { ref } from 'vue'
 import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/authStore'
 import Header from '@/components/Header.vue'
+import { usePagination } from '@/composables/usePagination'
 
 const authStore = useAuthStore()
-const videos = ref([])
-const loading = ref(false)
 const searchQuery = ref('')
-const page = ref(1)
-const hasMore = ref(true)
-const limit = 10
+
+const {
+	dataList,
+	loading,
+	hasMore,
+	loadNextPage,
+	reset
+} = usePagination(async (params) => {
+	const res = await uni.request({
+		url: `${authStore.API_BASE}/api/videos`,
+		method: 'GET',
+		data: {
+			...params,
+			q: searchQuery.value
+		}
+	})
+	if (res.statusCode === 200 && res.data) {
+		return {
+			data: res.data.videos,
+			total: res.data.total
+		}
+	}
+	return { data: [], total: 0 }
+}, { limit: 10 })
 
 onShow(() => {
 	onSearch()
 })
 
 onReachBottom(() => {
-	if (hasMore.value && !loading.value) {
-		fetchVideos(page.value + 1)
-	}
+	loadNextPage()
 })
 
 function onSearch() {
-	videos.value = []
-	page.value = 1
-	hasMore.value = true
-	fetchVideos(1)
+	reset()
+	loadNextPage()
 }
 
 function clearSearch() {
 	searchQuery.value = ''
 	onSearch()
-}
-
-async function fetchVideos(targetPage = 1) {
-	if (loading.value) return
-	loading.value = true
-	
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET',
-			data: {
-				q: searchQuery.value,
-				page: targetPage,
-				limit: limit
-			}
-		})
-		
-		if (res.statusCode === 200 && res.data) {
-			const newVideos = res.data.videos || []
-			if (targetPage === 1) {
-				videos.value = newVideos
-			} else {
-				videos.value = [...videos.value, ...newVideos]
-			}
-			
-			page.value = targetPage
-			hasMore.value = videos.value.length < (res.data.total || 0)
-		}
-	} catch (e) {
-		console.error('Fetch videos failed:', e)
-	} finally {
-		loading.value = false
-	}
 }
 
 function goReview(videoId) {

@@ -31,9 +31,21 @@ return function (App $app, PDO $db) {
 
         $sql = ' FROM videos v LEFT JOIN users u ON v.user_id = u.id ';
         $params = [];
+        $where = [];
+        
         if ($q) {
-            $sql .= ' WHERE v.title LIKE ? ';
+            $where[] = 'v.title LIKE ?';
             $params[] = "%$q%";
+        }
+        
+        $userId = $queryParams['user_id'] ?? null;
+        if ($userId) {
+            $where[] = 'v.user_id = ?';
+            $params[] = $userId;
+        }
+
+        if ($where) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
         }
 
         // 获取总数

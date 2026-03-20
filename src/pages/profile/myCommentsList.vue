@@ -7,35 +7,65 @@
 				<view class="group-info">
 					<text class="group-video-title">{{ group.video_title || '未知视频' }}</text>
 					<view class="group-stats">
-						<text class="group-count"><uni-icons type="chat" size="14" color="#a855f7" style="margin-right:6rpx;"/>{{ group.comments.length }} 条评论</text>
+						<text class="group-count">
+							<uni-icons type="chat" size="14" color="#a855f7" style="margin-right:6rpx;"/>
+							最近评论于 {{ group.comments[0] ? formatDateSimple(group.comments[0].created_at) : '' }}
+						</text>
 						<uni-icons type="right" size="16" color="#555" />
 					</view>
 				</view>
 			</view>
 
+			<view class="load-more-status" v-if="dataList.length > 0">
+				<text v-if="loading">正在加载...</text>
+				<text v-else-if="hasMore">加载更多评论记录...</text>
+				<text v-else>—— 已加载全部评论 ——</text>
+			</view>
+
 			<view class="empty-state" v-if="!loading && groupedComments.length === 0">
 				<uni-icons type="chat" size="40" color="#444" />
-				<text class="empty-text">暂无评论</text>
+				<text class="empty-text">暂无评论记录</text>
 			</view>
 		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { computed } from 'vue'
+import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
+import { usePagination } from '../../composables/usePagination'
 
 const authStore = useAuthStore()
-const myComments = ref([])
-const loading = ref(false)
+
+const {
+	dataList,
+	loading,
+	hasMore,
+	loadNextPage,
+	reset
+} = usePagination(async (params) => {
+	const res = await uni.request({
+		url: `${authStore.API_BASE}/api/comments/user/${authStore.user.id}`,
+		method: 'GET',
+		header: authStore.getAuthHeader(),
+		data: params
+	})
+	if (res.statusCode === 200) {
+		return {
+			data: res.data.comments,
+			total: res.data.total
+		}
+	}
+	return { data: [], total: 0 }
+})
 
 const groupedComments = computed(() => {
-	if (!myComments.value || myComments.value.length === 0) return []
+	if (!dataList.value || dataList.value.length === 0) return []
 	
 	const groupMap = new Map()
-	myComments.value.forEach(comment => {
+	dataList.value.forEach(comment => {
 		if (!groupMap.has(comment.video_id)) {
 			groupMap.set(comment.video_id, {
 				video_id: comment.video_id,
@@ -51,26 +81,19 @@ const groupedComments = computed(() => {
 
 onShow(() => {
 	if (authStore.isLoggedIn) {
-		fetchMyComments()
+		reset()
+		loadNextPage()
 	}
 })
 
-async function fetchMyComments() {
-	loading.value = true
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/comments/user/${authStore.user.id}`,
-			method: 'GET',
-			header: authStore.getAuthHeader()
-		})
-		if (res.statusCode === 200) {
-			myComments.value = res.data.comments || []
-		}
-	} catch (e) {
-		console.error('Failed to fetch my comments:', e)
-	} finally {
-		loading.value = false
-	}
+onReachBottom(() => {
+	loadNextPage()
+})
+
+function formatDateSimple(dateStr) {
+	if (!dateStr) return ''
+	const d = new Date(dateStr)
+	return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`
 }
 
 function goToMyComments(videoId) {
@@ -136,5 +159,13 @@ function goToMyComments(videoId) {
 	color: #555;
 	display: block;
 	margin-top: 16rpx;
+}
+
+.load-more-status {
+	width: 100%;
+	text-align: center;
+	padding: 60rpx 0;
+	font-size: 24rpx;
+	color: #444;
 }
 </style>

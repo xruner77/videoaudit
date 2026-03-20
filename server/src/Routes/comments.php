@@ -76,9 +76,18 @@ return function (App $app, PDO $db) {
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret, true));
 
-    // GET /api/comments/user/{userId} - 获取用户的所有评论 (需登录)
+    // GET /api/comments/user/{userId} - 获取用户的所有评论 (需登录, 支持分页)
     $app->get('/api/comments/user/{userId}', function (Request $request, Response $response, array $args) use ($db) {
         $userId = (int) $args['userId'];
+        $queryParams = $request->getQueryParams();
+        $page = (int)($queryParams['page'] ?? 1);
+        $limit = (int)($queryParams['limit'] ?? 20);
+        $offset = ($page - 1) * $limit;
+
+        // 获取总数
+        $countStmt = $db->prepare('SELECT COUNT(*) FROM comments WHERE user_id = ?');
+        $countStmt->execute([$userId]);
+        $total = (int)$countStmt->fetchColumn();
 
         $stmt = $db->prepare('
             SELECT c.*, u.username, v.title as video_title, v.created_at as video_created_at, uv.username as uploader
@@ -88,11 +97,20 @@ return function (App $app, PDO $db) {
             LEFT JOIN users uv ON v.user_id = uv.id
             WHERE c.user_id = ?
             ORDER BY c.created_at DESC
+            LIMIT ? OFFSET ?
         ');
-        $stmt->execute([$userId]);
+        $stmt->bindValue(1, $userId, PDO::PARAM_INT);
+        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $comments = $stmt->fetchAll();
 
-        $response->getBody()->write(json_encode(['comments' => $comments]));
+        $response->getBody()->write(json_encode([
+            'comments' => $comments,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit
+        ]));
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
