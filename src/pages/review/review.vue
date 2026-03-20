@@ -254,12 +254,12 @@
 					</view>
 				</template>
 
-				<view class="load-more-status" v-if="comments.length > 0">
+				<view class="load-more-status" v-if="dataList.length > 0">
 					<text v-if="loadingComments">正在加载...</text>
-					<text v-else-if="hasMoreComments" @click="fetchComments(currentCommentPage + 1)">加载更多评论</text>
+					<text v-else-if="hasMoreComments" @click="loadNextPage()">加载更多评论</text>
 					<text v-else>—— 已加载全部评论 ——</text>
 				</view>
-				<view class="empty-comments" v-if="comments.length === 0 && !loadingComments">
+				<view class="empty-comments" v-if="dataList.length === 0 && !loadingComments">
 					<text>暂无审核意见</text>
 				</view>
 			</view>
@@ -317,6 +317,7 @@ const {
 	loadNextPage,
 	reset: resetComments
 } = usePagination(async (params) => {
+	if (!videoId.value) return { data: [], total: 0 }
 	const res = await uni.request({
 		url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
 		method: 'GET',
