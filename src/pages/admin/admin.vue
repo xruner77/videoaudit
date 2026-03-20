@@ -37,7 +37,7 @@
 							confirm-type="search"
 							@confirm="onSearchVideos"
 						/>
-						<view class="clear-btn" v-if="videoQuery" @click="clearVideoSearch">
+						<view class="clear-btn" v-if="videoQuery" @click="handleClearVideoQuery">
 							<uni-icons type="closeempty" size="14" color="#888" />
 						</view>
 					</view>
@@ -50,6 +50,9 @@
 					:class="{ 'item-expanded': expandedId === v.id }"
 				>
 					<view class="admin-item-header" @click="toggleExpand(v.id)">
+						<view class="admin-video-icon">
+							<uni-icons type="videocam" size="20" color="#6c5ce7" />
+						</view>
 						<view class="admin-item-info">
 							<text class="admin-item-title">{{ v.title }}</text>
 							<view class="admin-item-meta">
@@ -110,9 +113,10 @@
 							class="search-input" 
 							v-model="videoSearchQuery" 
 							placeholder="按视频标题过滤..."
+							@focus="showSearchResult = true"
 							@input="showSearchResult = true"
 						/>
-						<view class="clear-btn" v-if="videoSearchQuery" @click="clearVideoSearch">
+						<view class="clear-btn" v-if="videoSearchQuery" @click="handleClearVideoFilter">
 							<uni-icons type="closeempty" size="14" color="#888" />
 						</view>
 					</view>
@@ -133,23 +137,29 @@
 							:class="{ active: selectedVideoId === v.id }"
 							@click="selectVideoFilter(v)"
 						>
-							<view class="result-thumb" v-if="v.type === 'local'">
-								<video :src="v.url + '#t=0.5'" muted :controls="false" />
+							<view class="admin-video-icon small-icon">
+								<uni-icons type="videocam" size="16" color="#6c5ce7" />
 							</view>
 							<view class="result-info">
 								<text class="result-title">{{ v.title }}</text>
-								<text class="result-uploader">{{ v.uploader }}</text>
+								<text class="result-uploader">{{ v.uploader || '系统' }}</text>
 							</view>
 						</view>
 					</view>
 					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
 
-				<view class="admin-item" v-for="c in filteredComments" :key="c.id">
+				<view class="admin-item" v-for="c in allComments" :key="c.id">
 					<view class="admin-item-info">
 						<text class="admin-item-title">{{ c.content }}</text>
 						<text class="admin-item-meta">
-							👤 {{ c.username }} · {{ formatTime(c.timestamp) }}
+							<uni-icons type="person" size="12" color="#666" style="margin-right:4rpx;"/>
+							<text>{{ c.username }}</text>
+							<text style="margin: 0 10rpx; color: #444;">·</text>
+							<uni-icons type="videocam" size="12" color="#666" style="margin-right:4rpx;"/>
+							<text>{{ c.video_title || '未知视频' }}</text>
+							<text style="margin: 0 10rpx; color: #444;">·</text>
+							<text>{{ formatTime(c.timestamp) }}</text>
 						</text>
 					</view>
 					<view class="admin-item-actions">
@@ -257,7 +267,14 @@ function onSearchVideos() {
 	refreshVideos()
 }
 
-function clearVideoSearch() {
+function refreshComments() {
+	allComments.value = []
+	commentPage.value = 1
+	hasMoreComments.value = true
+	fetchAdminComments(1)
+}
+
+function handleClearVideoQuery() {
 	videoQuery.value = ''
 	refreshVideos()
 }
@@ -337,7 +354,7 @@ function selectVideoFilter(video) {
 	refreshComments()
 }
 
-function clearVideoSearch() {
+function handleClearVideoFilter() {
 	videoSearchQuery.value = ''
 	selectedVideoId.value = null
 	refreshComments()
@@ -602,9 +619,25 @@ function formatTime(seconds) {
 
 .admin-item-header {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
 	padding: 24rpx 30rpx;
+}
+
+.admin-video-icon {
+	width: 60rpx;
+	height: 60rpx;
+	background: rgba(108, 92, 231, 0.1);
+	border-radius: 12rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+}
+
+.small-icon {
+	width: 48rpx;
+	height: 48rpx;
+	margin-right: 16rpx;
 }
 
 .admin-item-info {

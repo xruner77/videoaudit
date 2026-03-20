@@ -183,8 +183,8 @@
 				</view>
 
 				<!-- 父评论 -->
-				<template v-for="c in parentComments" :key="c.id">
-					<view class="comment-item" :class="{ 'comment-item-active': selectedCommentId === c.id }">
+				<template v-for="c in sortedComments" :key="c.id">
+					<view class="comment-item" :class="{ 'comment-item-active': activeCommentId === c.id }">
 						<view class="comment-main" @click="seekTo(c.id, c.timestamp)">
 							<view class="comment-avatar" :style="{ background: getAvatarColor(c.username) }">
 								<text class="avatar-letter">{{ getAvatarLetter(c.username) }}</text>
@@ -192,7 +192,7 @@
 							<view class="comment-body">
 								<view class="comment-header">
 									<text class="comment-username">{{ c.username }}</text>
-									<text class="comment-time" :class="{ 'time-active': selectedCommentId === c.id }">
+									<text class="comment-time" :class="{ 'time-active': activeCommentId === c.id }">
 										{{ formatTime(c.timestamp) }}
 									</text>
 								</view>

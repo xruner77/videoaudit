@@ -136,7 +136,13 @@ return function (App $app, PDO $db) {
     // GET /api/comments/{videoId}/markers - 获取视频评论的所有打点信息 (不分页, 用于时间轴)
     $app->get('/api/comments/{videoId}/markers', function (Request $request, Response $response, array $args) use ($db) {
         $videoId = (int) $args['videoId'];
-        $stmt = $db->prepare('SELECT id, timestamp FROM comments WHERE video_id = ? ORDER BY timestamp ASC');
+        $stmt = $db->prepare('
+            SELECT c.id, c.timestamp, u.username 
+            FROM comments c 
+            LEFT JOIN users u ON c.user_id = u.id 
+            WHERE c.video_id = ? 
+            ORDER BY c.timestamp ASC
+        ');
         $stmt->execute([$videoId]);
         $markers = $stmt->fetchAll();
         $response->getBody()->write(json_encode(['markers' => $markers]));
