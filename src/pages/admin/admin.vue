@@ -149,21 +149,31 @@
 					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
 
-				<view class="admin-item" v-for="c in commentList" :key="c.id">
-					<view class="admin-item-info">
-						<text class="admin-item-title">{{ c.content }}</text>
-						<text class="admin-item-meta">
-							<uni-icons type="person" size="12" color="#666" style="margin-right:4rpx;"/>
-							<text>{{ c.username }}</text>
-							<text style="margin: 0 10rpx; color: #444;">·</text>
-							<uni-icons type="videocam" size="12" color="#666" style="margin-right:4rpx;"/>
-							<text>{{ c.video_title || '未知视频' }}</text>
-							<text style="margin: 0 10rpx; color: #444;">·</text>
-							<text>{{ formatTime(c.timestamp) }}</text>
-						</text>
+				<view class="admin-comment-card" v-for="c in commentList" :key="c.id">
+					<view class="comment-card-header">
+						<view class="comment-user-info">
+							<view class="admin-user-avatar">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
+							<text class="comment-username">{{ c.username }}</text>
+						</view>
+						<view class="comment-video-tag">
+							<uni-icons type="videocam" size="12" color="#a0a0b8" />
+							<text class="video-title-tag">{{ c.video_title || '未知视频' }}</text>
+						</view>
 					</view>
-					<view class="admin-item-actions">
-						<text class="action-btn action-danger" @click="deleteComment(c.id)">删除</text>
+					
+					<view class="comment-card-body">
+						<text class="comment-text-content">{{ c.content }}</text>
+					</view>
+
+					<view class="comment-card-footer">
+						<view class="comment-meta-left">
+							<text class="comment-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
+							<text class="meta-separator">·</text>
+							<text class="comment-real-date">{{ formatDateSimple(c.created_at) }}</text>
+						</view>
+						<view class="comment-actions">
+							<text class="action-btn action-danger small-btn" @click="deleteComment(c.id)">删除</text>
+						</view>
 					</view>
 				</view>
 				
@@ -239,7 +249,7 @@ const {
 	reset: resetComments
 } = usePagination(async (params) => {
 	const res = await uni.request({
-		url: `${authStore.API_BASE}/api/comments/admin`,
+		url: `${authStore.API_BASE}/api/admin/comments`,
 		method: 'GET',
 		header: authStore.getAuthHeader(),
 		data: {
@@ -267,6 +277,12 @@ function switchTab(newTab) {
 	} else {
 		if (commentList.value.length === 0) refreshComments()
 	}
+}
+
+function formatDateSimple(dateStr) {
+	if (!dateStr) return ''
+	const d = new Date(dateStr)
+	return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
 async function fetchVideoOptions() {
@@ -716,23 +732,112 @@ function formatTime(seconds) {
 	background: rgba(255, 94, 94, 0.1);
 }
 
-/* 兼容现有样式的评论管理项 */
-.admin-item {
+/* 评论卡片样式升级 */
+.admin-comment-card {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 20rpx;
+	padding: 24rpx;
+	margin-bottom: 24rpx;
+	transition: all 0.2s ease;
+}
+
+.admin-comment-card:active {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.comment-card-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.05);
-	border-radius: 12rpx;
-	padding: 24rpx 30rpx;
-	margin-bottom: 12rpx;
+	margin-bottom: 20rpx;
 }
 
-.admin-item-meta-old {
+.comment-user-info {
+	display: flex;
+	align-items: center;
+}
+
+.admin-user-avatar {
+	width: 40rpx;
+	height: 40rpx;
+	background: #6c5ce7;
+	border-radius: 50%;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20rpx;
+	font-weight: bold;
+	margin-right: 12rpx;
+}
+
+.comment-username {
+	font-size: 26rpx;
+	color: #e0e0e0;
+	font-weight: 500;
+}
+
+.comment-video-tag {
+	display: flex;
+	align-items: center;
+	background: rgba(255, 255, 255, 0.05);
+	padding: 4rpx 12rpx;
+	border-radius: 8rpx;
+	max-width: 260rpx;
+}
+
+.video-title-tag {
+	font-size: 20rpx;
+	color: #a0a0b8;
+	margin-left: 6rpx;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.comment-card-body {
+	padding: 8rpx 0 20rpx;
+}
+
+.comment-text-content {
+	font-size: 28rpx;
+	color: #dcdce6;
+	line-height: 1.6;
+}
+
+.comment-card-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-top: 1px solid rgba(255, 255, 255, 0.04);
+	padding-top: 16rpx;
+}
+
+.comment-meta-left {
+	display: flex;
+	align-items: center;
+}
+
+.comment-timestamp {
+	font-size: 22rpx;
+	color: #f39c12;
+}
+
+.meta-separator {
+	color: #444;
+	margin: 0 10rpx;
+	font-size: 20rpx;
+}
+
+.comment-real-date {
 	font-size: 22rpx;
 	color: #666;
-	margin-top: 6rpx;
-	display: block;
+}
+
+.small-btn {
+	padding: 8rpx 20rpx !important;
+	font-size: 22rpx;
 }
 
 .load-more-status {
