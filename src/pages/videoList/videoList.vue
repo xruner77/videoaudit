@@ -94,7 +94,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onShow, onReachBottom } from '@dcloudio/uni-app'
+import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/authStore'
 import Header from '@/components/Header.vue'
 import { usePagination } from '@/composables/usePagination'
@@ -102,13 +102,16 @@ import { usePagination } from '@/composables/usePagination'
 const authStore = useAuthStore()
 const searchQuery = ref('')
 
+const loaded = ref(false)
+
 const {
 	dataList,
 	loading,
 	hasMore,
 	total,
 	loadNextPage,
-	reset
+	reset,
+	silentRefresh
 } = usePagination(async (params) => {
 	const res = await uni.request({
 		url: `${authStore.API_BASE}/api/videos`,
@@ -127,8 +130,14 @@ const {
 	return { data: [], total: 0 }
 }, { limit: 10 })
 
-onShow(() => {
+onLoad(() => {
 	onSearch()
+})
+
+onShow(() => {
+	if (loaded.value) {
+		silentRefresh({ q: searchQuery.value })
+	}
 })
 
 onReachBottom(() => {
@@ -137,7 +146,7 @@ onReachBottom(() => {
 
 function onSearch() {
 	reset()
-	loadNextPage()
+	loadNextPage().then(() => { loaded.value = true })
 }
 
 function clearSearch() {

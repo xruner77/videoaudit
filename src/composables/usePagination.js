@@ -54,6 +54,34 @@ export function usePagination(fetchFn, options = {}) {
 		loading.value = false
 	}
 
+	/**
+	 * 静默刷新：后台重新拉取第一页数据并合并，不清空列表、不显示 loading
+	 */
+	async function silentRefresh(extraParams = {}) {
+		try {
+			const res = await fetchFn({
+				page: 1,
+				limit,
+				...extraParams
+			})
+			if (res && Array.isArray(res.data)) {
+				// 保留已加载分页的数量，只替换第一页的数据
+				const oldPageCount = page.value - 1 // 已加载的页数
+				if (oldPageCount <= 1) {
+					// 只加载了第一页，直接替换
+					dataList.value = res.data
+				} else {
+					// 多页情况：替换前 limit 条，保留后续分页
+					dataList.value = [...res.data, ...dataList.value.slice(limit)]
+				}
+				total.value = res.total || 0
+				hasMore.value = dataList.value.length < total.value
+			}
+		} catch (e) {
+			console.error('Silent refresh error:', e)
+		}
+	}
+
 	return {
 		dataList,
 		loading,
@@ -61,6 +89,7 @@ export function usePagination(fetchFn, options = {}) {
 		hasMore,
 		total,
 		loadNextPage,
-		reset
+		reset,
+		silentRefresh
 	}
 }
