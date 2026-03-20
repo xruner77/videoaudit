@@ -451,9 +451,7 @@ function formatTime(seconds) {
 	z-index: 100;
 	padding-top: 10rpx;
 	margin-bottom: 30rpx;
-	/* 毛玻璃效果，既看起来没背景，又能挡住底部滚动的内容 */
-	backdrop-filter: blur(10px);
-	background: rgba(15, 15, 26, 0.7);
+	background: #1a1a2e; /* 还原为与头部一致的深灰色实体背景 */
 }
 
 .tab-header {
