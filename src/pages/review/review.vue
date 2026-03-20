@@ -199,14 +199,19 @@
 								<view class="comment-content-box" v-if="c.content || c.image_url">
 									<text class="comment-content" v-if="c.content">{{ c.content }}</text>
 									<view class="comment-image-list" v-if="getImages(c.image_url).length > 0">
-										<image 
-											v-for="(img, idx) in getImages(c.image_url)" 
-											:key="idx" 
-											:src="getFullUrl(img)" 
-											class="comment-image" 
-											mode="widthFix" 
-											@click.stop="previewCommentImage(c.image_url, idx)" 
-										/>
+										<view class="image-wrapper" v-for="(img, idx) in getImages(c.image_url)" :key="idx">
+											<view class="image-placeholder" v-if="getImageStatus(img + idx) !== 'loaded' && getImageStatus(img + idx) !== 'error'"></view>
+											<view class="image-error" v-if="getImageStatus(img + idx) === 'error'">加载失败</view>
+											<image 
+												:src="getFullUrl(img)" 
+												class="comment-image" 
+												:class="{ 'hide-img': getImageStatus(img + idx) !== 'loaded' }"
+												mode="widthFix" 
+												@load="onImageLoadManual(img + idx)"
+												@error="onImageErrorManual(img + idx)"
+												@click.stop="previewCommentImage(c.image_url, idx)" 
+											/>
+										</view>
 									</view>
 								</view>
 								<view class="comment-actions">
@@ -219,7 +224,7 @@
 
 						<!-- 子评论（全展平，顺序往下排列） -->
 						<view class="replies-container" v-if="c.replies && c.replies.length > 0">
-							<view class="reply-item" v-for="r in c.replies" :key="r.id" @click.stop="onCommentClick(c)">
+							<view class="reply-item" v-for="r in (isExpanded(c.id) ? c.replies : c.replies.slice(0, 3))" :key="r.id" @click.stop="onCommentClick(c)">
 								<view class="comment-avatar unified-avatar" :style="{ background: getAvatarColor(r.username) }">
 									<text class="avatar-letter-small">{{ getAvatarLetter(r.username) }}</text>
 								</view>
@@ -233,14 +238,19 @@
 											<text v-if="r.content">{{ r.content }}</text>
 										</text>
 										<view class="comment-image-list mt-8" v-if="getImages(r.image_url).length > 0">
-											<image 
-												v-for="(img, idx) in getImages(r.image_url)" 
-												:key="idx" 
-												:src="getFullUrl(img)" 
-												class="reply-image" 
-												mode="widthFix" 
-												@click.stop="previewCommentImage(r.image_url, idx)" 
-											/>
+											<view class="image-wrapper" v-for="(img, idx) in getImages(r.image_url)" :key="idx">
+												<view class="image-placeholder small-placeholder" v-if="getImageStatus(img + idx) !== 'loaded' && getImageStatus(img + idx) !== 'error'"></view>
+												<view class="image-error small-error" v-if="getImageStatus(img + idx) === 'error'">失败</view>
+												<image 
+													:src="getFullUrl(img)" 
+													class="reply-image" 
+													:class="{ 'hide-img': getImageStatus(img + idx) !== 'loaded' }"
+													mode="widthFix" 
+													@load="onImageLoadManual(img + idx)"
+													@error="onImageErrorManual(img + idx)"
+													@click.stop="previewCommentImage(r.image_url, idx)" 
+												/>
+											</view>
 										</view>
 									</view>
 									<view class="reply-actions">
@@ -249,6 +259,11 @@
 										<text class="reply-btn delete-btn" v-if="authStore.isAdmin || r.user_id == authStore.user?.sub" @click.stop="deleteComment(r.id)">删除</text>
 									</view>
 								</view>
+							</view>
+							<!-- 展开/收回按钮 -->
+							<view class="replies-fold-ctrl" v-if="c.replies.length > 3" @click.stop="toggleExpand(c.id)">
+								<text class="fold-text">{{ isExpanded(c.id) ? '收起回复' : '展开更多回复 (共 ' + c.replies.length + ' 条)' }}</text>
+								<uni-icons :type="isExpanded(c.id) ? 'arrowup' : 'arrowdown'" size="12" color="#6c5ce7" />
 							</view>
 						</view>
 					</view>
@@ -342,6 +357,8 @@ const isRotated = ref(false)
 const showSortPopup = ref(false)
 const sortType = ref('timestamp')
 const hasSorted = ref(false)
+const expandedCommentIds = ref([]) // 记录展开的根评论 ID
+const imageLoadingStatus = ref({}) // { 'url_idx': 'loading' | 'loaded' | 'error' }
 let seekTimer = null
 let videoContext = null
 
@@ -356,24 +373,49 @@ const sortLabel = computed(() => {
 })
 
 const sortedComments = computed(() => {
-	// Group comments by parent_id
-	const commentMap = new Map(dataList.value.map(c => [c.id, { ...c, replies: [] }]));
+	// 1. 创建所有评论的映射，并初始化回复数组
+	const commentMap = new Map();
+	dataList.value.forEach(c => {
+		commentMap.set(c.id, { ...c, replies: [] });
+	});
 
 	const rootComments = [];
+	
+	// 2. 将所有回复分配到最顶层的“根评论”下
 	commentMap.forEach(comment => {
-		if (comment.parent_id && commentMap.has(comment.parent_id)) {
-			commentMap.get(comment.parent_id).replies.push(comment);
+		if (comment.parent_id) {
+			// 递归向上查找根评论
+			let current = comment;
+			let root = null;
+			let visited = new Set(); // 防止循环引用（理论上不会发生）
+			
+			while (current.parent_id && commentMap.has(current.parent_id) && !visited.has(current.id)) {
+				visited.add(current.id);
+				current = commentMap.get(current.parent_id);
+			}
+			
+			// 查找结束，current 如果没有 parent_id 或者 parent_id 不在 map 中，它就是根
+			root = current;
+			
+			if (root.id !== comment.id) {
+				// 将该回复加入根评论的 replies 数组中（展平显示）
+				root.replies.push(comment);
+			} else {
+				// 没有有效父级，作为根评论处理
+				rootComments.push(comment);
+			}
 		} else {
+			// 没有 parent_id，本来就是根评论
 			rootComments.push(comment);
 		}
 	});
 
-	// Sort replies within each root comment by creation time
+	// 3. 对每个根评论下的展平回复按创建时间排序
 	rootComments.forEach(root => {
 		root.replies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 	});
 
-	// Sort root comments based on the selected sortType
+	// 4. 根据当前选择的 sortType 对根评论排序
 	const list = [...rootComments];
 	switch(sortType.value) {
 		case 'timestamp':
@@ -393,6 +435,31 @@ function selectSortType(type) {
 	sortType.value = type
 	showSortPopup.value = false
 	hasSorted.value = true
+}
+
+function toggleExpand(commentId) {
+	const index = expandedCommentIds.value.indexOf(commentId)
+	if (index > -1) {
+		expandedCommentIds.value.splice(index, 1)
+	} else {
+		expandedCommentIds.value.push(commentId)
+	}
+}
+
+function isExpanded(commentId) {
+	return expandedCommentIds.value.includes(commentId)
+}
+
+function onImageLoadManual(key) {
+	imageLoadingStatus.value[key] = 'loaded'
+}
+
+function onImageErrorManual(key) {
+	imageLoadingStatus.value[key] = 'error'
+}
+
+function getImageStatus(key) {
+	return imageLoadingStatus.value[key] || 'loading'
 }
 
 function getFullUrl(path) {
@@ -1734,18 +1801,74 @@ function formatRelativeTime(dateStr) {
 	margin-top: 16rpx;
 }
 
-.comment-image {
-	width: 180rpx;
-	height: 180rpx;
-	object-fit: cover;
-	border-radius: 8rpx;
-}
-
 .reply-image {
 	width: 140rpx;
 	height: 140rpx;
 	object-fit: cover;
 	border-radius: 8rpx;
+}
+
+.image-wrapper {
+	position: relative;
+	overflow: hidden;
+	border-radius: 8rpx;
+}
+
+.image-placeholder {
+	width: 180rpx;
+	height: 180rpx;
+	background: rgba(255, 255, 255, 0.05);
+	position: relative;
+	overflow: hidden;
+}
+
+.image-placeholder::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+	animation: skeleton-loading 1.5s infinite;
+}
+
+.small-placeholder {
+	width: 140rpx;
+	height: 140rpx;
+}
+
+@keyframes skeleton-loading {
+	0% { transform: translateX(-100%); }
+	100% { transform: translateX(100%); }
+}
+
+.image-error {
+	width: 180rpx;
+	height: 180rpx;
+	background: rgba(255, 255, 255, 0.03);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20rpx;
+	color: #666;
+	border: 1px dashed rgba(255, 255, 255, 0.1);
+	border-radius: 8rpx;
+}
+
+.small-error {
+	width: 140rpx;
+	height: 140rpx;
+	font-size: 18rpx;
+}
+
+.hide-img {
+	position: absolute !important;
+	top: 0;
+	left: 0;
+	opacity: 0;
+	width: 0 !important;
+	height: 0 !important;
 }
 
 .mt-8 {
