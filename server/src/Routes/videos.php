@@ -91,7 +91,7 @@ return function (App $app, PDO $db) {
 
     // GET /api/videos/all-names - 获取所有视频名称 (仅管理员, 用于过滤器)
     $app->get('/api/videos/all-names', function (Request $request, Response $response) use ($db) {
-        $stmt = $db->query('SELECT id, title, url, type, (SELECT username FROM users WHERE id = v.user_id) as uploader FROM videos v ORDER BY title ASC');
+        $stmt = $db->query('SELECT id, title, url, type, (SELECT username FROM users WHERE id = v.user_id) as uploader, (SELECT COUNT(*) FROM comments WHERE video_id = v.id) as comment_count FROM videos v ORDER BY title ASC');
         $videos = $stmt->fetchAll();
         $response->getBody()->write(json_encode(['videos' => $videos]));
         return $response->withHeader('Content-Type', 'application/json');

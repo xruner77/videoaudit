@@ -88,9 +88,14 @@
 							</view>
 						</view>
 						<view class="admin-item-actions">
-							<text class="action-btn" @click.stop="goReview(v.id)">查看视频</text>
-							<view style="flex: 1"></view>
-							<text class="action-btn action-danger" @click.stop="deleteVideo(v.id)">删除</text>
+							<view class="action-link-group">
+								<text class="btn-link" @click.stop="goReview(v.id)">
+									<uni-icons type="eye" size="14" color="#6c5ce7" style="margin-right:8rpx;" />查看视频
+								</text>
+								<text class="btn-link danger" @click.stop="deleteVideo(v.id)">
+									<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:8rpx;" />删除视频
+								</text>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -141,7 +146,7 @@
 								<uni-icons type="videocam" size="16" color="#6c5ce7" />
 							</view>
 							<view class="result-info">
-								<text class="result-title">{{ v.title }}</text>
+								<text class="result-title">{{ v.title }} <text style="font-size: 20rpx; color: #888; font-weight: normal; margin-left: 8rpx;">({{ v.comment_count || 0 }})</text></text>
 								<text class="result-uploader">{{ v.uploader || '系统' }}</text>
 							</view>
 						</view>
@@ -172,7 +177,9 @@
 							<text class="comment-real-date">{{ formatDateSimple(c.created_at) }}</text>
 						</view>
 						<view class="comment-actions">
-							<text class="action-btn action-danger small-btn" @click="deleteComment(c.id)">删除</text>
+							<text class="btn-link danger small-text" @click="deleteComment(c.id)">
+								<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
+							</text>
 						</view>
 					</view>
 				</view>
@@ -714,22 +721,36 @@ function formatTime(seconds) {
 	padding-top: 10rpx;
 }
 
-.action-btn {
-	font-size: 26rpx;
+.btn-link {
+	font-size: 24rpx;
 	color: #6c5ce7;
-	padding: 12rpx 24rpx;
-	background: rgba(108, 92, 231, 0.1);
-	border-radius: 8rpx;
-	font-weight: 500;
+	display: flex;
+	align-items: center;
+	padding: 10rpx 0;
+	transition: opacity 0.2s;
 }
 
-.action-btn:active {
-	opacity: 0.7;
+.btn-link:active {
+	opacity: 0.6;
 }
 
-.action-danger {
-	color: #ff5e5e;
-	background: rgba(255, 94, 94, 0.1);
+.btn-link.danger {
+	color: #e74c3c;
+}
+
+.btn-link.small-text {
+	font-size: 22rpx;
+}
+
+.action-link-group {
+	display: flex;
+	gap: 30rpx;
+	width: 100%;
+}
+
+.admin-item-actions {
+	padding: 24rpx 30rpx;
+	border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 /* 评论卡片样式升级 */
