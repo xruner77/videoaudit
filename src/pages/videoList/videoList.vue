@@ -1,6 +1,21 @@
 <template>
 	<view class="page">
-		<Header title="视频审片" />
+		<Header title="生活网审片系统" />
+		
+		<!-- 欢迎语与统计 -->
+		<view class="welcome-section" v-if="authStore.isLoggedIn">
+			<view class="welcome-text">
+				<text class="user-greeting">你好，{{ authStore.user?.username || '用户' }}</text>
+				<text class="system-welcome">欢迎使用审片系统</text>
+			</view>
+			<view class="stats-badge">
+				<view class="stats-item">
+					<text class="stats-value">{{ total }}</text>
+					<text class="stats-label">待审视频</text>
+				</view>
+			</view>
+		</view>
+
 		<view class="search-bar-container">
 			<view class="search-bar">
 				<uni-icons type="search" size="18" color="#888" class="search-icon" />
@@ -91,6 +106,7 @@ const {
 	dataList,
 	loading,
 	hasMore,
+	total,
 	loadNextPage,
 	reset
 } = usePagination(async (params) => {
@@ -367,7 +383,7 @@ function getVideoThumbUrl(video) {
 
 /* 页脚样式 */
 .footer {
-	padding: 60rpx 0 100rpx;
+	padding: 20rpx 0 ; /* 进一步压缩占位 */
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -375,15 +391,68 @@ function getVideoThumbUrl(video) {
 }
 
 .footer-logo {
-	width: 120rpx;
-	height: 120rpx;
-	margin-bottom: 20rpx;
-	opacity: 0.6;
+	width: 180rpx; /* 适度缩小 Logo */
+	height: 60rpx;
+	margin-bottom: 8rpx; /* 极细间距 */
+	opacity: 0.8;
 }
 
 .footer-copyright {
 	font-size: 22rpx;
 	color: #444;
 	letter-spacing: 1rpx;
+}
+
+/* 欢迎区域样式 */
+.welcome-section {
+	padding: 30rpx;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: linear-gradient(to bottom, #1a1a2e 0%, #0f0f1a 100%);
+}
+
+.welcome-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.user-greeting {
+	font-size: 34rpx;
+	font-weight: 600;
+	color: #fff;
+	margin-bottom: 4rpx;
+}
+
+.system-welcome {
+	font-size: 22rpx;
+	color: #888;
+}
+
+.stats-badge {
+	background: rgba(108, 92, 231, 0.1);
+	border: 1px solid rgba(108, 92, 231, 0.2);
+	padding: 16rpx 24rpx;
+	border-radius: 20rpx;
+}
+
+.stats-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.stats-value {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #6c5ce7;
+	line-height: 1;
+	margin-bottom: 4rpx;
+}
+
+.stats-label {
+	font-size: 18rpx;
+	color: #666;
+	text-transform: uppercase;
 }
 </style>
