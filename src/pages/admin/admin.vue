@@ -448,10 +448,10 @@ function formatTime(seconds) {
 .admin-tabs {
 	position: sticky;
 	top: 88rpx;
-	z-index: 100;
+	z-index: 110; /* 必须高于 search-box-wrapper 的 101 */
 	padding-top: 10rpx;
 	margin-bottom: 30rpx;
-	background: #1a1a2e; /* 还原为与头部一致的深灰色实体背景 */
+	background: #1a1a2e !important; /* 强制使用实体背景 */
 }
 
 .tab-header {
