@@ -254,10 +254,10 @@
 					</view>
 				</template>
 
-				<view class="load-more-comments" v-if="comments.length > 0">
+				<view class="load-more-status" v-if="comments.length > 0">
 					<text v-if="loadingComments">正在加载...</text>
 					<text v-else-if="hasMoreComments" @click="fetchComments(currentCommentPage + 1)">加载更多评论</text>
-					<text v-else class="no-more">—— 已加载全部评论 ——</text>
+					<text v-else>—— 已加载全部评论 ——</text>
 				</view>
 				<view class="empty-comments" v-if="comments.length === 0 && !loadingComments">
 					<text>暂无审核意见</text>
@@ -1875,14 +1875,10 @@ function formatRelativeTime(dateStr) {
 	font-size: 26rpx;
 }
 
-.load-more-comments {
+.load-more-status {
 	text-align: center;
-	padding: 30rpx 0;
+	padding: 60rpx 0;
 	font-size: 24rpx;
-	color: #6c5ce7;
-}
-
-.load-more-comments .no-more {
 	color: #444;
 }
 

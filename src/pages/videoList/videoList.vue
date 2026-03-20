@@ -60,9 +60,9 @@
 				<text>暂无相关视频</text>
 			</view>
 			<view class="load-more-status" v-if="videos.length > 0">
-				<text v-if="loading">加载中...</text>
-				<text v-else-if="!hasMore">—— 已加载全部视频 ——</text>
-				<text v-else>继续滚动加载</text>
+				<text v-if="loading">正在加载...</text>
+				<text v-else-if="hasMore">继续滚动加载</text>
+				<text v-else>—— 已加载全部视频 ——</text>
 			</view>
 		</view>
 
@@ -341,6 +341,15 @@ function getVideoThumbUrl(video) {
 	color: #444;
 	display: block;
 	margin-top: 10rpx;
+}
+
+.load-more-status {
+	grid-column: span 2;
+	width: 100%;
+	text-align: center;
+	padding: 80rpx 0;
+	font-size: 24rpx;
+	color: #444;
 }
 
 .fab {
