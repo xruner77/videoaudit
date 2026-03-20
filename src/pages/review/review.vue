@@ -551,9 +551,12 @@ async function fetchVideoDetail() {
 				videoViews.value = video.views || 0
 
 				// 本地视频需要拼接后端地址
-				videoUrl.value = video.type === 'local'
+				const url = video.type === 'local'
 					? `${authStore.API_BASE}${video.url}`
 					: video.url
+				
+				// 添加 #t=0.1 强制浏览器（特别是微信）渲染首帧或指定时间的画面
+				videoUrl.value = url.includes('#t=') ? url : url + '#t=0.1'
 					
 				// 增加播放量
 				incrementViewCount(video.id)
