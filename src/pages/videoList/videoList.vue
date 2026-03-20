@@ -264,14 +264,14 @@ function getVideoThumbUrl(video) {
 	position: absolute;
 	top: 12rpx;
 	right: 12rpx;
-	background: rgba(108, 92, 231, 0.7);
-	padding: 4rpx 14rpx;
-	border-radius: 8rpx;
+	background: none;
 }
 
 .video-type-badge text {
-	font-size: 20rpx;
+	font-size: 22rpx;
 	color: #fff;
+	font-weight: bold;
+	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.8);
 }
 
 .video-duration-badge {

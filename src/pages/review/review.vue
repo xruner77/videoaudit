@@ -49,7 +49,7 @@
 								<!-- 评论打点 (头像) -->
 								<view
 									class="comment-dot"
-									:class="{ 'dot-active': selectedCommentId === dot.id }"
+									:class="{ 'dot-active': activeCommentId === dot.id }"
 									v-for="dot in commentDots"
 									:key="dot.id"
 									:style="{ 
