@@ -357,7 +357,7 @@ const sortLabel = computed(() => {
 
 const sortedComments = computed(() => {
 	// Group comments by parent_id
-	const commentMap = new Map(comments.value.map(c => [c.id, { ...c, replies: [] }]));
+	const commentMap = new Map(dataList.value.map(c => [c.id, { ...c, replies: [] }]));
 
 	const rootComments = [];
 	commentMap.forEach(comment => {
@@ -575,35 +575,6 @@ async function fetchMarkers() {
 		}
 	} catch (e) {
 		console.error('Failed to fetch markers:', e)
-	}
-}
-
-async function fetchComments(page = 1) {
-	if (loadingComments.value) return
-	loadingComments.value = true
-	
-	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
-			method: 'GET',
-			data: {
-				page: page,
-				limit: commentLimit
-			}
-		})
-		if (res.statusCode === 200) {
-			if (page === 1) {
-				comments.value = res.data.comments || []
-			} else {
-				comments.value = [...comments.value, ...(res.data.comments || [])]
-			}
-			currentCommentPage.value = page
-			hasMoreComments.value = comments.value.length < (res.data.total || 0)
-		}
-	} catch (e) {
-		console.error('Failed to fetch comments:', e)
-	} finally {
-		loadingComments.value = false
 	}
 }
 
