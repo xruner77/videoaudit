@@ -447,11 +447,13 @@ function formatTime(seconds) {
 
 .admin-tabs {
 	position: sticky;
-	top: 0;
-	background: #0f0f1a;
+	top: 88rpx;
 	z-index: 100;
-	padding-top: 20rpx;
-	margin-bottom: 40rpx;
+	padding-top: 10rpx;
+	margin-bottom: 30rpx;
+	/* 毛玻璃效果，既看起来没背景，又能挡住底部滚动的内容 */
+	backdrop-filter: blur(10px);
+	background: rgba(15, 15, 26, 0.7);
 }
 
 .tab-header {
@@ -461,8 +463,8 @@ function formatTime(seconds) {
 }
 
 .tab-item {
-	font-size: 30rpx;
-	color: #666;
+	font-size: 28rpx;
+	color: #999; /* 提高非激活状态的文字亮度 */
 	padding: 20rpx 0;
 	transition: all 0.3s ease;
 	font-weight: 500;
