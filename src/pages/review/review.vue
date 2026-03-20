@@ -965,6 +965,40 @@ function formatRelativeTime(dateStr) {
 	box-shadow: none;
 }
 
+.is-fullscreen .controls {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background: rgba(10, 10, 26, 0.65) !important;
+	padding: 10px 15px calc(10px + env(safe-area-inset-bottom)) !important;
+	z-index: 100;
+}
+
+.is-fullscreen .controls-bottom {
+	height: 50px !important;
+}
+
+.is-fullscreen .comment-dot {
+	width: 20px !important;
+	height: 20px !important;
+}
+
+.is-fullscreen .comment-dot.dot-active {
+	width: 28px !important;
+	height: 28px !important;
+}
+
+.is-fullscreen .dot-avatar-letter {
+	font-size: 11px !important;
+}
+
+.is-fullscreen .speed-text,
+.is-fullscreen .time-current,
+.is-fullscreen .time-total {
+	font-size: 14px !important;
+}
+
 .player-section.is-rotated {
 	width: 100vh !important;
 	height: 100vw !important;
@@ -1536,7 +1570,7 @@ function formatRelativeTime(dateStr) {
 
 .comment-content {
 	font-size: 30rpx;
-	color: #ffffff;
+	color: #eeeeee;
 	line-height: 1.6;
 	word-break: break-all;
 	display: block;
@@ -1738,7 +1772,7 @@ function formatRelativeTime(dateStr) {
 
 .reply-content {
 	font-size: 27rpx;
-	color: #eee;
+	color: #eeeeee;
 	line-height: 1.6;
 	word-break: break-all;
 	display: block;
