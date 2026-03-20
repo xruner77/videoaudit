@@ -7,13 +7,16 @@
 				<view class="video-thumb">
 					<video 
 						class="thumb-video" 
-						:src="video.url" 
+						:src="getVideoThumbUrl(video)" 
 						:controls="false" 
 						:show-center-play-btn="false" 
 						:enable-progress-gesture="false"
 						object-fit="cover"
 						muted
 						preload="metadata"
+						playsinline
+						webkit-playsinline
+						x5-video-player-type="h5-page"
 					></video>
 					<view class="thumb-overlay"></view>
 					<view class="video-type-badge">
@@ -101,6 +104,16 @@ function formatDuration(seconds) {
 	const m = Math.floor(seconds / 60)
 	const s = seconds % 60
 	return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+}
+
+function getVideoThumbUrl(video) {
+	if (!video || !video.url) return ''
+	let url = video.type === 'local' ? `${authStore.API_BASE}${video.url}` : video.url
+	// 添加 #t=0.5 强制浏览器（特别是微信）渲染首帧或指定时间的画面
+	if (!url.includes('#t=')) {
+		url += '#t=0.5'
+	}
+	return url
 }
 </script>
 

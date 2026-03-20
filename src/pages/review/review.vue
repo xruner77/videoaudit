@@ -14,6 +14,7 @@
 						:show-center-play-btn="false"
 						playsinline
 						webkit-playsinline
+						x5-video-player-type="h5-page"
 						@timeupdate="onTimeUpdate"
 						@play="onPlay"
 						@pause="isPlaying = false; isLoading = false"
