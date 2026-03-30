@@ -28,8 +28,8 @@
 				</view>
 			</view>
 
-			<!-- 数据统计入口 -->
-			<view class="stat-grid">
+			<!-- 数据统计入口（普通用户） -->
+			<view class="stat-grid" v-if="!authStore.isAdmin">
 				<view class="stat-card" @click="goMyVideos">
 					<text class="stat-number">{{ videoTotal }}</text>
 					<view class="stat-label-row">
@@ -49,18 +49,11 @@
 			<!-- 功能菜单 -->
 			<view class="menu-section">
 				<view class="menu-card">
-					<view class="menu-item" @click="goUpload" v-if="authStore.isLoggedIn">
+					<view class="menu-item" @click="goUpload" v-if="authStore.isLoggedIn && !authStore.isAdmin">
 						<view class="menu-icon-wrapper">
 							<uni-icons type="cloud-upload" size="20" color="#b8b8b8" />
 						</view>
 						<text class="menu-label">上传视频</text>
-						<uni-icons type="right" size="16" color="#555" />
-					</view>
-					<view class="menu-item" @click="goAdmin" v-if="authStore.isAdmin">
-						<view class="menu-icon-wrapper">
-							<uni-icons type="gear" size="20" color="#b8b8b8" />
-						</view>
-						<text class="menu-label">后台管理</text>
 						<uni-icons type="right" size="16" color="#555" />
 					</view>
 					<view class="menu-item" @click="goPasswordChange">
@@ -144,6 +137,7 @@ async function fetchVideos() {
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/videos`,
 			method: 'GET',
+			header: authStore.getAuthHeader(),
 			data: {
 				user_id: authStore.user?.id,
 				limit: 1 // 仅需要总数，减少数据传输

@@ -177,6 +177,35 @@ return function (App $app, PDO $db) {
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret, true));
 
+    // PUT /api/admin/users/{id}/reset-password - 管理员重置用户密码
+    $app->put('/api/admin/users/{id}/reset-password', function (Request $request, Response $response, array $args) use ($db) {
+        $currentUser = $request->getAttribute('user');
+        $targetId = (int) $args['id'];
+        $data = $request->getParsedBody();
+        $newPassword = $data['password'] ?? '';
+
+        if (empty($newPassword) || strlen($newPassword) < 6) {
+            $response->getBody()->write(json_encode(['error' => '新密码至少 6 个字符']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        // 检查目标用户是否存在
+        $stmt = $db->prepare('SELECT id, username FROM users WHERE id = ?');
+        $stmt->execute([$targetId]);
+        $targetUser = $stmt->fetch();
+        if (!$targetUser) {
+            $response->getBody()->write(json_encode(['error' => '用户不存在']));
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        }
+
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $db->prepare('UPDATE users SET password = ? WHERE id = ?');
+        $stmt->execute([$hash, $targetId]);
+
+        $response->getBody()->write(json_encode(['message' => '密码已重置']));
+        return $response->withHeader('Content-Type', 'application/json');
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret, true));
+
     // DELETE /api/admin/users/{id} - 管理员删除用户
     $app->delete('/api/admin/users/{id}', function (Request $request, Response $response, array $args) use ($db, $uploadDir) {
         $currentUser = $request->getAttribute('user');

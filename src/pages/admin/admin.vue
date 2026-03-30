@@ -207,7 +207,10 @@
 					<text v-else-if="hasMoreVideos" @click="loadNextVideos">加载更多视频</text>
 					<text v-else>—— 已加载全部 ——</text>
 				</view>
-				<view class="empty-state" v-if="videoList.length === 0 && !loadingVideos">
+				<view class="empty-state" v-if="videoList.length === 0 && loadingVideos">
+					<text>正在加载...</text>
+				</view>
+				<view class="empty-state" v-else-if="videoList.length === 0 && !loadingVideos">
 					<text>暂无相关视频</text>
 				</view>
 			</view>
@@ -293,7 +296,10 @@
 					<text v-else>—— 已加载全部 ——</text>
 				</view>
 
-				<view class="empty-state" v-if="commentList.length === 0 && !loadingComments">
+				<view class="empty-state" v-if="commentList.length === 0 && loadingComments">
+					<text>正在加载...</text>
+				</view>
+				<view class="empty-state" v-else-if="commentList.length === 0 && !loadingComments">
 					<text>暂无相关评论</text>
 				</view>
 			</view>
@@ -353,7 +359,10 @@
 								</view>
 							</view>
 						</view>
-						<view v-if="u.id != authStore.user?.id">
+						<view class="user-actions-row" v-if="u.id != authStore.user?.id">
+							<text class="btn-link small-text" @click="openResetPassword(u.id, u.username)">
+								<uni-icons type="locked" size="14" color="#6c5ce7" style="margin-right:6rpx;" />重置密码
+							</text>
 							<text class="btn-link danger small-text" @click="deleteUser(u.id, u.username)">
 								<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
 							</text>
@@ -362,6 +371,26 @@
 				</view>
 				<view class="empty-state" v-if="userList.length === 0 && !loadingUsers">
 					<text>暂无用户</text>
+				</view>
+
+				<!-- 重置密码弹层 -->
+				<view class="modal-mask" v-if="showResetPassword" @click="showResetPassword = false">
+					<view class="modal-content" @click.stop>
+						<view class="modal-header">
+							<text class="modal-title">重置密码</text>
+							<view class="modal-close" @click="showResetPassword = false">
+								<uni-icons type="closeempty" size="18" color="#999" />
+							</view>
+						</view>
+						<view class="reset-user-hint">
+							<text>为用户「{{ resetTargetName }}」设置新密码</text>
+						</view>
+						<view class="form-group">
+							<text class="form-label">新密码</text>
+							<input class="dark-input" v-model="resetNewPassword" placeholder="至少6个字符" maxlength="32" />
+						</view>
+						<button class="btn-primary create-user-btn" :loading="resettingPassword" @click="resetPassword">确认重置</button>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -377,7 +406,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '@/components/Header.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
@@ -443,6 +472,11 @@ const newUsername = ref('')
 const newPassword = ref('')
 const newRole = ref('user')
 const creatingUser = ref(false)
+const showResetPassword = ref(false)
+const resetTargetId = ref(null)
+const resetTargetName = ref('')
+const resetNewPassword = ref('')
+const resettingPassword = ref(false)
 
 // ==================== Video pagination ====================
 const videoQuery = ref('')
@@ -500,6 +534,11 @@ onShow(() => {
 	if (!authStore.isAdmin) return
 	fetchDashboard()
 	fetchVideoOptions()
+})
+
+onReachBottom(() => {
+	if (tab.value === 'videos') loadNextVideos()
+	else if (tab.value === 'comments') loadNextComments()
 })
 
 function switchTab(newTab) {
@@ -749,6 +788,38 @@ async function deleteUser(id, username) {
 			}
 		}
 	})
+}
+
+function openResetPassword(id, username) {
+	resetTargetId.value = id
+	resetTargetName.value = username
+	resetNewPassword.value = ''
+	showResetPassword.value = true
+}
+
+async function resetPassword() {
+	if (!resetNewPassword.value || resetNewPassword.value.length < 6) {
+		return uni.showToast({ title: '密码至少6个字符', icon: 'none' })
+	}
+	resettingPassword.value = true
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/admin/users/${resetTargetId.value}/reset-password`,
+			method: 'PUT',
+			header: { 'Content-Type': 'application/json', ...authStore.getAuthHeader() },
+			data: { password: resetNewPassword.value }
+		})
+		if (res.statusCode === 200) {
+			uni.showToast({ title: '密码已重置', icon: 'success' })
+			showResetPassword.value = false
+		} else {
+			throw new Error(res.data?.error || '重置失败')
+		}
+	} catch (e) {
+		uni.showToast({ title: e.message, icon: 'none' })
+	} finally {
+		resettingPassword.value = false
+	}
 }
 </script>
 
@@ -1561,5 +1632,70 @@ async function deleteUser(id, username) {
 .role-user {
 	background: rgba(16, 185, 129, 0.15);
 	color: #34d399;
+}
+
+.user-actions-row {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 12rpx;
+	flex-shrink: 0;
+}
+
+/* 重置密码弹层 */
+.modal-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+	width: 620rpx;
+	background: #1a1a2e;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 20rpx;
+	padding: 40rpx 30rpx;
+	box-shadow: 0 20rpx 40rpx rgba(0, 0, 0, 0.5);
+	animation: scaleIn 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes scaleIn {
+	from { opacity: 0; transform: scale(0.9); }
+	to { opacity: 1; transform: scale(1); }
+}
+
+.modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 30rpx;
+}
+
+.modal-title {
+	font-size: 32rpx;
+	color: #fff;
+	font-weight: 600;
+}
+
+.modal-close {
+	padding: 10rpx;
+	margin: -10rpx;
+}
+
+.reset-user-hint {
+	margin-bottom: 20rpx;
+}
+
+.reset-user-hint text {
+	font-size: 26rpx;
+	color: #b0b0c8;
 }
 </style>
