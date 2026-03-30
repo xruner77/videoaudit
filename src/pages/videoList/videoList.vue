@@ -750,8 +750,8 @@ onReachBottom(() => {
 .create-user-btn { width: 100%; height: 80rpx; display: flex; align-items: center; justify-content: center; margin-top: 16rpx; }
 .admin-item-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16rpx; margin-bottom: 20rpx; overflow: hidden; position: relative; }
 .admin-item-header { display: flex; align-items: center; padding: 24rpx 30rpx; position: relative; }
-.user-actions-col { position: absolute; right: 24rpx; top: 20rpx; display: flex; flex-direction: column; align-items: flex-end; gap: 8rpx; }
-.admin-item-info { flex: 1; overflow: hidden; padding-right: 140rpx; }
+.user-actions-col { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 12rpx; margin-left: 20rpx; }
+.admin-item-info { flex: 1; min-width: 0; overflow: hidden; }
 .admin-item-title { font-size: 28rpx; color: #e0e0e0; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 8rpx; }
 .admin-item-meta { display: flex; gap: 20rpx; }
 .meta-tag { display: flex; align-items: center; font-size: 22rpx; color: #777; }
