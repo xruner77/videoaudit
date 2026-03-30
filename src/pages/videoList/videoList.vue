@@ -48,16 +48,24 @@
 						<text class="section-more" @click="switchAdminTab('videos')">查看全部 →</text>
 					</view>
 					<view v-if="recentVideos.length === 0" class="empty-hint"><text>暂无视频</text></view>
-					<view class="recent-list" v-else>
-						<view class="recent-item" v-for="v in recentVideos" :key="v.id" @click="goReview(v.id)">
-							<view class="recent-icon ri-purple"><uni-icons type="videocam" size="16" color="#a78bfa" /></view>
-							<view class="recent-info">
-								<text class="recent-title">{{ v.title }}</text>
-								<text class="recent-meta">{{ v.uploader || '系统' }} · {{ formatDateSimple(v.created_at) }}</text>
+					<view class="recent-list-videos" v-else>
+						<view class="video-manage-card" v-for="v in recentVideos" :key="v.id" @click="goReview(v.id)">
+							<view class="vm-preview">
+								<video class="vm-preview-video" :src="getVideoThumbUrl(v)" :controls="false" :show-center-play-btn="false" :enable-progress-gesture="false" object-fit="cover" muted preload="metadata" playsinline webkit-playsinline x5-video-player-type="h5-page"></video>
+								<view class="vm-preview-overlay"></view>
+								<view class="vm-duration" v-if="v.duration"><text>{{ formatDuration(v.duration) }}</text></view>
 							</view>
-							<view class="recent-badge">
-								<uni-icons type="chat" size="12" color="#888" />
-								<text class="badge-num">{{ v.comment_count || 0 }}</text>
+							<view class="vm-info">
+								<text class="vm-title">{{ v.title }}</text>
+								<view class="vm-meta-row">
+									<uni-icons type="person" size="12" color="#666" style="margin-right:4rpx;" />
+									<text>{{ v.uploader || '未知' }}</text>
+									<text class="vm-type-tag">{{ v.type === 'local' ? '本地' : '远程' }}</text>
+								</view>
+								<view class="vm-stats-row">
+									<view class="vm-stat"><uni-icons type="chat" size="12" color="#888" /><text>{{ v.comment_count || 0 }}</text></view>
+									<view class="vm-stat"><uni-icons type="eye" size="12" color="#888" /><text>{{ v.views || 0 }}</text></view>
+								</view>
 							</view>
 						</view>
 					</view>
@@ -110,6 +118,9 @@
 					</view>
 					<view class="vm-info">
 						<text class="vm-title">{{ v.title }}</text>
+						<view class="vm-delete-btn" @click.stop="deleteVideo(v.id)">
+							<uni-icons type="trash" size="16" color="#e74c3c" />
+						</view>
 						<view class="vm-meta-row">
 							<uni-icons type="person" size="12" color="#666" style="margin-right:4rpx;" />
 							<text>{{ v.uploader || '未知' }}</text>
@@ -118,9 +129,6 @@
 						<view class="vm-stats-row">
 							<view class="vm-stat"><uni-icons type="chat" size="12" color="#888" /><text>{{ v.comment_count || 0 }}</text></view>
 							<view class="vm-stat"><uni-icons type="eye" size="12" color="#888" /><text>{{ v.views || 0 }}</text></view>
-						</view>
-						<view class="vm-actions">
-							<text class="vm-btn vm-btn-del" @click.stop="deleteVideo(v.id)"><uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除</text>
 						</view>
 					</view>
 				</view>
@@ -155,29 +163,24 @@
 					</view>
 					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
-				<view class="admin-comment-card" v-for="c in commentList" :key="c.id">
-					<view class="comment-card-header">
-						<view class="comment-user-info">
-							<view class="admin-user-avatar" :style="{ background: getUserColor(c.username) }">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
-							<text class="comment-username">{{ c.username }}</text>
+				<view class="recent-comment-item" v-for="c in commentList" :key="c.id" style="position: relative;">
+					<view class="rc-header">
+						<view class="rc-avatar" :style="{ background: getUserColor(c.username) }">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
+						<view class="rc-user-info">
+							<text class="rc-username">{{ c.username }}</text>
+							<text class="rc-date">{{ formatDateSimple(c.created_at) }}</text>
 						</view>
-						<view class="comment-video-tag">
-							<uni-icons type="videocam" size="12" color="#a0a0b8" />
-							<text class="video-title-tag">{{ c.video_title || '未知视频' }}</text>
+						<view class="rc-delete-btn" @click="deleteComment(c.id)">
+							<uni-icons type="trash" size="16" color="#e74c3c" />
 						</view>
 					</view>
-					<view class="comment-card-body"><text class="comment-text-content">{{ c.content }}</text></view>
-					<view class="comment-card-footer">
-						<view class="comment-meta-left">
-							<text class="comment-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
-							<text class="meta-separator">·</text>
-							<text class="comment-real-date">{{ formatDateSimple(c.created_at) }}</text>
+					<text class="rc-content">{{ c.content }}</text>
+					<view class="rc-footer">
+						<view class="rc-video-tag">
+							<uni-icons type="videocam" size="12" color="#888" />
+							<text class="rc-video-name">{{ c.video_title || '未知视频' }}</text>
 						</view>
-						<view class="comment-actions">
-							<text class="btn-link danger small-text" @click="deleteComment(c.id)">
-								<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
-							</text>
-						</view>
+						<text class="rc-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
 					</view>
 				</view>
 				<view class="load-more-status" v-if="commentList.length > 0">
@@ -209,12 +212,12 @@
 								<view class="meta-tag"><text>{{ formatDateSimple(u.created_at) }}</text></view>
 							</view>
 						</view>
-						<view class="user-actions-row" v-if="u.id != authStore.user?.id">
-							<text class="btn-link small-text" @click="openResetPassword(u.id, u.username)">
-								<uni-icons type="locked" size="14" color="#6c5ce7" style="margin-right:6rpx;" />重置密码
-							</text>
-							<text class="btn-link danger small-text" @click="deleteUser(u.id, u.username)">
-								<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
+						<view class="user-actions-col" v-if="u.id != authStore.user?.id">
+							<view style="padding: 10rpx; margin-right: -10rpx;" @click="deleteUser(u.id, u.username)">
+								<uni-icons type="trash" size="18" color="#e74c3c" />
+							</view>
+							<text class="btn-link neutral small-text" @click="openResetPassword(u.id, u.username)">
+								<uni-icons type="locked" size="14" color="#a0a0b8" style="margin-right:6rpx;" />重置密码
 							</text>
 						</view>
 					</view>
@@ -565,7 +568,7 @@ onReachBottom(() => {
 .video-meta { display: flex; justify-content: space-between; align-items: center; }
 .meta-stats { display: flex; align-items: center; gap: 16rpx; }
 .meta-user, .meta-date, .meta-comments { font-size: 22rpx; color: #666; }
-.empty-state { width: 100%; text-align: center; padding: 100rpx 60rpx; }
+.empty-state { width: 100%; text-align: center; padding: 100rpx 0; box-sizing: border-box; }
 .empty-state text { color: #444; font-size: 26rpx; }
 .load-more-status { grid-column: span 2; width: 100%; text-align: center; padding: 40rpx 0; font-size: 24rpx; color: #444; }
 .fab { position: fixed; bottom: 160rpx; right: 40rpx; width: 100rpx; height: 100rpx; border-radius: 50%; background: linear-gradient(135deg, #6c5ce7, #a855f7); display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 24rpx rgba(108,92,231,0.4); z-index: 100; }
@@ -585,7 +588,19 @@ onReachBottom(() => {
 
 /* ==================== 管理员样式 ==================== */
 .admin-container { padding: 0 30rpx 40rpx; }
-.admin-tabs { position: sticky; top: 88rpx; z-index: 110; padding-top: 10rpx; margin-bottom: 30rpx; background: #1a1a2e !important; }
+.admin-tabs {
+	position: sticky;
+	top: 88rpx;
+	z-index: 110;
+	padding-top: 10rpx;
+	padding-bottom: 10rpx;
+	margin-bottom: 0;
+	background: #1a1a2e !important;
+	margin-left: -30rpx;
+	margin-right: -30rpx;
+	padding-left: 30rpx;
+	padding-right: 30rpx;
+}
 .tab-header { display: flex; justify-content: space-around; padding: 10rpx 0; }
 .tab-item { font-size: 26rpx; color: #777; padding: 20rpx 0; transition: all 0.3s ease; font-weight: 500; }
 .tab-active { color: #fff; font-weight: 600; }
@@ -597,7 +612,7 @@ onReachBottom(() => {
 .tab-pos-users { transform: translateX(300%); }
 
 /* Dashboard */
-.dashboard-section { animation: fadeIn 0.3s ease; }
+.dashboard-section { animation: fadeIn 0.3s ease; padding-top: 24rpx; }
 .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; margin-bottom: 36rpx; }
 .stat-card { border-radius: 20rpx; padding: 24rpx 20rpx; display: flex; flex-direction: column; align-items: center; gap: 12rpx; position: relative; overflow: hidden; }
 .stat-card::before { content: ''; position: absolute; inset: 0; border-radius: 20rpx; border: 1px solid rgba(255,255,255,0.08); pointer-events: none; }
@@ -637,15 +652,29 @@ onReachBottom(() => {
 .rc-video-tag { display: flex; align-items: center; gap: 6rpx; }
 .rc-video-name { font-size: 20rpx; color: #666; max-width: 240rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rc-timestamp { font-size: 20rpx; color: #f39c12; }
+.rc-delete-btn { display: flex; align-items: center; justify-content: center; padding: 10rpx; margin: -10rpx; margin-left: auto; transition: opacity 0.2s; }
+.rc-delete-btn:active { opacity: 0.6; }
 .empty-hint { text-align: center; padding: 40rpx 0; }
 .empty-hint text { color: #444; font-size: 24rpx; }
 
-/* 搜索 & 筛选 */
-.filter-section { margin-bottom: 30rpx; position: relative; }
+.filter-section {
+	margin-bottom: 30rpx;
+	position: sticky;
+	top: 208rpx; /* (88 header + 120 tabs height) */
+	z-index: 105;
+	background: #1a1a2e;
+	padding-top: 10rpx;
+	padding-bottom: 20rpx;
+	margin-top: 0;
+	margin-left: -30rpx;
+	margin-right: -30rpx;
+	padding-left: 30rpx;
+	padding-right: 30rpx;
+}
 .search-box-wrapper { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12rpx; height: 80rpx; display: flex; align-items: center; padding: 0 24rpx; position: relative; z-index: 101; }
 .search-icon-admin { margin-right: 16rpx; }
 .search-input-admin { flex: 1; font-size: 26rpx; color: #fff; }
-.search-results-list { position: absolute; top: 90rpx; left: 0; right: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 12rpx; max-height: 500rpx; overflow-y: auto; z-index: 102; box-shadow: 0 10rpx 40rpx rgba(0,0,0,0.5); animation: slideDown 0.2s ease; }
+.search-results-list { position: absolute; top: 90rpx; left: 30rpx; right: 30rpx; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 12rpx; max-height: 500rpx; overflow-y: auto; z-index: 102; box-shadow: 0 10rpx 40rpx rgba(0,0,0,0.5); animation: slideDown 0.2s ease; }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-20rpx); } to { opacity: 1; transform: translateY(0); } }
 .search-result-item { display: flex; align-items: center; padding: 20rpx 24rpx; border-bottom: 1px solid rgba(255,255,255,0.03); }
 .search-result-item:active { background: rgba(255,255,255,0.05); }
@@ -656,15 +685,17 @@ onReachBottom(() => {
 .search-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99; }
 
 /* 视频管理 - 左右布局 */
-.video-manage-card { display: flex; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16rpx; margin-bottom: 20rpx; overflow: hidden; transition: all 0.2s ease; }
+.video-manage-card { position: relative; display: flex; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16rpx; margin-bottom: 20rpx; overflow: hidden; transition: all 0.2s ease; }
 .video-manage-card:active { background: rgba(255,255,255,0.06); }
-.vm-preview { width: 260rpx; min-height: 190rpx; position: relative; flex-shrink: 0; background: #1a1a2e; overflow: hidden; }
+.vm-preview { width: 210rpx; min-height: 140rpx; position: relative; flex-shrink: 0; background: #1a1a2e; overflow: hidden; }
 .vm-preview-video { width: 100%; height: 100%; display: block; pointer-events: none; }
 .vm-preview-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 40%, rgba(0,0,0,0.4) 100%); pointer-events: none; }
 .vm-duration { position: absolute; bottom: 8rpx; right: 8rpx; }
 .vm-duration text { font-size: 20rpx; color: #fff; font-weight: bold; text-shadow: 0 2rpx 4rpx rgba(0,0,0,0.8); }
-.vm-info { flex: 1; padding: 16rpx 20rpx; display: flex; flex-direction: column; justify-content: center; min-width: 0; gap: 8rpx; }
-.vm-title { font-size: 26rpx; font-weight: 600; color: #e0e0e0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+.vm-info { flex: 1; padding: 16rpx 20rpx; display: flex; flex-direction: column; justify-content: center; min-width: 0; gap: 8rpx; position: relative; }
+.vm-title { font-size: 26rpx; font-weight: 600; color: #e0e0e0; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; padding-right: 48rpx; }
+.vm-delete-btn { position: absolute; top: 16rpx; right: 20rpx; padding: 10rpx; margin: -10rpx; display: flex; align-items: center; justify-content: center; z-index: 10; transition: opacity 0.2s; }
+.vm-delete-btn:active { opacity: 0.6; }
 .vm-meta-row { display: flex; align-items: center; gap: 8rpx; font-size: 22rpx; color: #777; }
 .vm-type-tag { background: rgba(108,92,231,0.12); color: #a78bfa; font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 6rpx; margin-left: 8rpx; }
 .vm-stats-row { display: flex; align-items: center; gap: 20rpx; }
@@ -693,13 +724,14 @@ onReachBottom(() => {
 .comment-real-date { font-size: 22rpx; color: #666; }
 .btn-link { font-size: 24rpx; color: #6c5ce7; display: flex; align-items: center; padding: 10rpx 0; transition: opacity 0.2s; }
 .btn-link:active { opacity: 0.6; }
+.btn-link.neutral { color: #a0a0b8; }
 .btn-link.danger { color: #e74c3c; }
 .btn-link.small-text { font-size: 22rpx; }
 .admin-video-icon { width: 60rpx; height: 60rpx; background: rgba(108,92,231,0.1); border-radius: 12rpx; display: flex; align-items: center; justify-content: center; margin-right: 20rpx; }
 .small-icon { width: 48rpx; height: 48rpx; margin-right: 16rpx; }
 
 /* 用户管理 */
-.user-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.user-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; padding-top: 24rpx; }
 .add-user-btn { width: 56rpx; height: 56rpx; background: linear-gradient(135deg, #6c5ce7, #a855f7); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4rpx 12rpx rgba(108,92,231,0.3); transition: transform 0.2s; }
 .add-user-btn:active { transform: scale(0.92); }
 
@@ -716,9 +748,10 @@ onReachBottom(() => {
 .role-option { flex: 1; text-align: center; padding: 16rpx 0; font-size: 26rpx; color: #666; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12rpx; transition: all 0.3s; }
 .role-active { background: linear-gradient(135deg, rgba(108,92,231,0.2), rgba(168,85,247,0.2)); border-color: rgba(108,92,231,0.5); color: #fff; font-weight: 600; }
 .create-user-btn { width: 100%; height: 80rpx; display: flex; align-items: center; justify-content: center; margin-top: 16rpx; }
-.admin-item-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16rpx; margin-bottom: 20rpx; overflow: hidden; }
-.admin-item-header { display: flex; align-items: center; padding: 24rpx 30rpx; }
-.admin-item-info { flex: 1; overflow: hidden; }
+.admin-item-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16rpx; margin-bottom: 20rpx; overflow: hidden; position: relative; }
+.admin-item-header { display: flex; align-items: center; padding: 24rpx 30rpx; position: relative; }
+.user-actions-col { position: absolute; right: 24rpx; top: 20rpx; display: flex; flex-direction: column; align-items: flex-end; gap: 8rpx; }
+.admin-item-info { flex: 1; overflow: hidden; padding-right: 140rpx; }
 .admin-item-title { font-size: 28rpx; color: #e0e0e0; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 8rpx; }
 .admin-item-meta { display: flex; gap: 20rpx; }
 .meta-tag { display: flex; align-items: center; font-size: 22rpx; color: #777; }
@@ -726,7 +759,7 @@ onReachBottom(() => {
 .avatar-letter-s { font-size: 26rpx; color: #fff; font-weight: 700; }
 .role-badge { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 6rpx; margin-right: 12rpx; }
 .role-admin { background: rgba(108,92,231,0.2); color: #a78bfa; }
-.role-user { background: rgba(16,185,129,0.15); color: #34d399; }
+.role-user { background: rgba(255,255,255,0.08); color: #b0b0c8; }
 .user-actions-row { display: flex; flex-direction: column; align-items: flex-end; gap: 12rpx; flex-shrink: 0; }
 .reset-user-hint { margin-bottom: 20rpx; }
 .reset-user-hint text { font-size: 26rpx; color: #b0b0c8; }

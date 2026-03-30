@@ -78,18 +78,24 @@
 					<view v-if="recentVideos.length === 0" class="empty-hint">
 						<text>暂无视频</text>
 					</view>
-					<view class="recent-list" v-else>
-						<view class="recent-item" v-for="v in recentVideos" :key="v.id" @click="goReview(v.id)">
-							<view class="recent-icon ri-purple">
-								<uni-icons type="videocam" size="16" color="#a78bfa" />
+					<view class="recent-list-videos" v-else>
+						<view class="video-manage-card" v-for="v in recentVideos" :key="v.id" @click="goReview(v.id)">
+							<view class="vm-preview">
+								<video class="vm-preview-video" :src="getVideoThumbUrl(v)" :controls="false" :show-center-play-btn="false" :enable-progress-gesture="false" object-fit="cover" muted preload="metadata" playsinline webkit-playsinline x5-video-player-type="h5-page"></video>
+								<view class="vm-preview-overlay"></view>
+								<view class="vm-duration" v-if="v.duration"><text>{{ formatDuration(v.duration) }}</text></view>
 							</view>
-							<view class="recent-info">
-								<text class="recent-title">{{ v.title }}</text>
-								<text class="recent-meta">{{ v.uploader || '系统' }} · {{ formatDateSimple(v.created_at) }}</text>
-							</view>
-							<view class="recent-badge">
-								<uni-icons type="chat" size="12" color="#888" />
-								<text class="badge-num">{{ v.comment_count || 0 }}</text>
+							<view class="vm-info">
+								<text class="vm-title">{{ v.title }}</text>
+								<view class="vm-meta-row">
+									<uni-icons type="person" size="12" color="#666" style="margin-right:4rpx;" />
+									<text>{{ v.uploader || '未知' }}</text>
+									<text class="vm-type-tag">{{ v.type === 'local' ? '本地' : '远程' }}</text>
+								</view>
+								<view class="vm-stats-row">
+									<view class="vm-stat"><uni-icons type="chat" size="12" color="#888" /><text>{{ v.comment_count || 0 }}</text></view>
+									<view class="vm-stat"><uni-icons type="eye" size="12" color="#888" /><text>{{ v.views || 0 }}</text></view>
+								</view>
 							</view>
 						</view>
 					</view>
@@ -260,33 +266,24 @@
 					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
 
-				<view class="admin-comment-card" v-for="c in commentList" :key="c.id">
-					<view class="comment-card-header">
-						<view class="comment-user-info">
-							<view class="admin-user-avatar" :style="{ background: getUserColor(c.username) }">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
-							<text class="comment-username">{{ c.username }}</text>
+				<view class="recent-comment-item" v-for="c in commentList" :key="c.id" style="position: relative;">
+					<view class="rc-header">
+						<view class="rc-avatar" :style="{ background: getUserColor(c.username) }">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
+						<view class="rc-user-info">
+							<text class="rc-username">{{ c.username }}</text>
+							<text class="rc-date">{{ formatDateSimple(c.created_at) }}</text>
 						</view>
-						<view class="comment-video-tag">
-							<uni-icons type="videocam" size="12" color="#a0a0b8" />
-							<text class="video-title-tag">{{ c.video_title || '未知视频' }}</text>
+						<view class="rc-delete-btn" @click="deleteComment(c.id)">
+							<uni-icons type="trash" size="16" color="#e74c3c" />
 						</view>
 					</view>
-
-					<view class="comment-card-body">
-						<text class="comment-text-content">{{ c.content }}</text>
-					</view>
-
-					<view class="comment-card-footer">
-						<view class="comment-meta-left">
-							<text class="comment-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
-							<text class="meta-separator">·</text>
-							<text class="comment-real-date">{{ formatDateSimple(c.created_at) }}</text>
+					<text class="rc-content">{{ c.content }}</text>
+					<view class="rc-footer">
+						<view class="rc-video-tag">
+							<uni-icons type="videocam" size="12" color="#888" />
+							<text class="rc-video-name">{{ c.video_title || '未知视频' }}</text>
 						</view>
-						<view class="comment-actions">
-							<text class="btn-link danger small-text" @click="deleteComment(c.id)">
-								<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
-							</text>
-						</view>
+						<text class="rc-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
 					</view>
 				</view>
 
@@ -360,8 +357,8 @@
 							</view>
 						</view>
 						<view class="user-actions-row" v-if="u.id != authStore.user?.id">
-							<text class="btn-link small-text" @click="openResetPassword(u.id, u.username)">
-								<uni-icons type="locked" size="14" color="#6c5ce7" style="margin-right:6rpx;" />重置密码
+							<text class="btn-link neutral small-text" @click="openResetPassword(u.id, u.username)">
+								<uni-icons type="locked" size="14" color="#a0a0b8" style="margin-right:6rpx;" />重置密码
 							</text>
 							<text class="btn-link danger small-text" @click="deleteUser(u.id, u.username)">
 								<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
@@ -835,8 +832,13 @@ async function resetPassword() {
 	top: 88rpx;
 	z-index: 110;
 	padding-top: 10rpx;
-	margin-bottom: 30rpx;
+	padding-bottom: 10rpx;
+	margin-bottom: 0;
 	background: #1a1a2e !important;
+	margin-left: -30rpx;
+	margin-right: -30rpx;
+	padding-left: 30rpx;
+	padding-right: 30rpx;
 }
 
 .tab-header {
@@ -897,6 +899,7 @@ async function resetPassword() {
 
 .dashboard-section {
 	animation: fadeIn 0.3s ease;
+	padding-top: 24rpx;
 }
 
 .stats-row {
@@ -1155,6 +1158,9 @@ async function resetPassword() {
 	color: #f39c12;
 }
 
+.rc-delete-btn { display: flex; align-items: center; justify-content: center; padding: 10rpx; margin: -10rpx; margin-left: auto; transition: opacity 0.2s; }
+.rc-delete-btn:active { opacity: 0.6; }
+
 .empty-hint {
 	text-align: center;
 	padding: 40rpx 0;
@@ -1169,7 +1175,17 @@ async function resetPassword() {
 
 .filter-section {
 	margin-bottom: 30rpx;
-	position: relative;
+	position: sticky;
+	top: 208rpx; /* (88 header + 120 tabs height) */
+	z-index: 105;
+	background: #1a1a2e;
+	padding-top: 10rpx;
+	padding-bottom: 20rpx;
+	margin-top: 0;
+	margin-left: -30rpx;
+	margin-right: -30rpx;
+	padding-left: 30rpx;
+	padding-right: 30rpx;
 }
 
 .search-box-wrapper {
@@ -1201,8 +1217,8 @@ async function resetPassword() {
 .search-results-list {
 	position: absolute;
 	top: 90rpx;
-	left: 0;
-	right: 0;
+	left: 30rpx;
+	right: 30rpx;
 	background: #1a1a2e;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 12rpx;
@@ -1390,6 +1406,10 @@ async function resetPassword() {
 
 .btn-link:active {
 	opacity: 0.6;
+}
+
+.btn-link.neutral {
+	color: #a0a0b8;
 }
 
 .btn-link.danger {
@@ -1599,6 +1619,7 @@ async function resetPassword() {
 
 .user-list-header {
 	margin-bottom: 20rpx;
+	padding-top: 24rpx;
 }
 
 .user-avatar-small {
@@ -1630,8 +1651,8 @@ async function resetPassword() {
 }
 
 .role-user {
-	background: rgba(16, 185, 129, 0.15);
-	color: #34d399;
+	background: rgba(255, 255, 255, 0.08);
+	color: #b0b0c8;
 }
 
 .user-actions-row {

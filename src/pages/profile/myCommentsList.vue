@@ -2,17 +2,27 @@
 	<view class="page-container">
 		<Header title="我的评论" showBack />
 
-		<view class="comment-list">
-			<view class="comment-group-card" v-for="group in groupedComments" :key="group.video_id" @click="goToMyComments(group.video_id)">
-				<view class="group-info">
-					<text class="group-video-title">{{ group.video_title || '未知视频' }}</text>
-					<view class="group-stats">
-						<text class="group-count">
-							<uni-icons type="chat" size="14" color="#a855f7" style="margin-right:6rpx;"/>
-							最近评论于 {{ group.comments[0] ? formatDateSimple(group.comments[0].created_at) : '' }}
-						</text>
-						<uni-icons type="right" size="16" color="#555" />
+		<view class="mc-container">
+			<view class="recent-comment-item" v-for="c in dataList" :key="c.id" @click="goToVideo(c.video_id)">
+				<view class="rc-header">
+					<view class="rc-avatar" :style="{ background: getUserColor(authStore.user?.username) }">
+						{{ authStore.user?.username ? authStore.user.username.charAt(0).toUpperCase() : '?' }}
 					</view>
+					<view class="rc-user-info">
+						<text class="rc-username">{{ authStore.user?.username }}</text>
+						<text class="rc-date">{{ formatDateSimple(c.created_at) }}</text>
+					</view>
+					<view class="rc-delete-btn" @click.stop="deleteComment(c.id)">
+						<uni-icons type="trash" size="16" color="#e74c3c" />
+					</view>
+				</view>
+				<text class="rc-content">{{ c.content }}</text>
+				<view class="rc-footer">
+					<view class="rc-video-tag">
+						<uni-icons type="videocam" size="12" color="#888" />
+						<text class="rc-video-name">{{ c.video_title || '未知视频' }}</text>
+					</view>
+					<text class="rc-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
 				</view>
 			</view>
 
@@ -22,7 +32,7 @@
 				<text v-else>—— 已加载全部评论 ——</text>
 			</view>
 
-			<view class="empty-state" v-if="!loading && groupedComments.length === 0">
+			<view class="empty-state" v-if="!loading && dataList.length === 0">
 				<uni-icons type="chat" size="40" color="#444" />
 				<text class="empty-text">暂无评论记录</text>
 			</view>
@@ -31,7 +41,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
@@ -47,7 +56,7 @@ const {
 	reset
 } = usePagination(async (params) => {
 	const res = await uni.request({
-		url: `${authStore.API_BASE}/api/comments/user/${authStore.user.id}`,
+		url: `${authStore.API_BASE}/api/comments/user/${authStore.user?.id}`,
 		method: 'GET',
 		header: authStore.getAuthHeader(),
 		data: params
@@ -61,24 +70,6 @@ const {
 	return { data: [], total: 0 }
 })
 
-const groupedComments = computed(() => {
-	if (!dataList.value || dataList.value.length === 0) return []
-	
-	const groupMap = new Map()
-	dataList.value.forEach(comment => {
-		if (!groupMap.has(comment.video_id)) {
-			groupMap.set(comment.video_id, {
-				video_id: comment.video_id,
-				video_title: comment.video_title,
-				comments: []
-			})
-		}
-		groupMap.get(comment.video_id).comments.push(comment)
-	})
-	
-	return Array.from(groupMap.values())
-})
-
 onShow(() => {
 	if (authStore.isLoggedIn) {
 		reset()
@@ -90,70 +81,155 @@ onReachBottom(() => {
 	loadNextPage()
 })
 
+function goToVideo(videoId) {
+	uni.navigateTo({ url: `/pages/review/review?id=${videoId}` })
+}
+
+async function deleteComment(id) {
+	uni.showModal({
+		title: '确认删除',
+		content: '确定要删除这条评论吗？',
+		success: async (res) => {
+			if (!res.confirm) return
+			try {
+				const resp = await uni.request({
+					url: `${authStore.API_BASE}/api/comments/${id}`,
+					method: 'DELETE',
+					header: authStore.getAuthHeader()
+				})
+				if (resp.statusCode === 200) {
+					uni.showToast({ title: '已删除', icon: 'success' })
+					reset()
+					loadNextPage()
+				} else {
+					throw new Error(resp.data?.error || '删除失败')
+				}
+			} catch (e) {
+				uni.showToast({ title: e.message, icon: 'none' })
+			}
+		}
+	})
+}
+
+const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
+function getUserColor(username) {
+	if (!username) return avatarColors[0]
+	let hash = 0
+	for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash)
+	return avatarColors[Math.abs(hash) % avatarColors.length]
+}
+
 function formatDateSimple(dateStr) {
 	if (!dateStr) return ''
 	const d = new Date(dateStr)
-	return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`
+	return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
-function goToMyComments(videoId) {
-	uni.navigateTo({ url: `/pages/myComments/myComments?videoId=${videoId}` })
+function formatTime(seconds) {
+	if (!seconds || seconds < 0) return '0:00'
+	const m = Math.floor(seconds / 60)
+	const s = Math.floor(seconds % 60)
+	return `${m}:${s.toString().padStart(2, '0')}`
 }
 </script>
 
 <style scoped>
 
-.comment-list {
-	padding: 20rpx;
+.mc-container {
+	padding: 20rpx 30rpx 60rpx;
 }
 
-.comment-group-card {
+/* 评论卡片 - 对齐后台样式 */
+.recent-comment-item {
 	background: rgba(255, 255, 255, 0.03);
 	border: 1px solid rgba(255, 255, 255, 0.06);
 	border-radius: 16rpx;
-	padding: 24rpx;
+	padding: 22rpx 24rpx;
 	margin-bottom: 16rpx;
 	transition: all 0.2s ease;
 }
-
-.comment-group-card:active {
+.recent-comment-item:active {
 	background: rgba(255, 255, 255, 0.06);
 }
 
-.group-info {
+.rc-header {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	margin-bottom: 14rpx;
 }
-
-.group-video-title {
-	font-size: 28rpx;
-	font-weight: 600;
+.rc-avatar {
+	width: 40rpx;
+	height: 40rpx;
+	border-radius: 50%;
 	color: #fff;
-	margin-bottom: 12rpx;
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20rpx;
+	font-weight: bold;
+	margin-right: 12rpx;
+	flex-shrink: 0;
 }
-
-.group-stats {
+.rc-user-info {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+.rc-username {
+	font-size: 24rpx;
+	color: #e0e0e0;
+	font-weight: 500;
+}
+.rc-date {
+	font-size: 20rpx;
+	color: #555;
+}
+.rc-delete-btn { padding: 10rpx; margin: -10rpx; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; }
+.rc-delete-btn:active { opacity: 0.6; }
+.rc-content {
+	font-size: 28rpx;
+	color: #dcdce6;
+	line-height: 1.5;
+	display: block;
+	margin-bottom: 12rpx;
+}
+.rc-footer {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 }
-
-.group-count {
-	font-size: 24rpx;
-	color: #a0a0b8;
+.rc-video-tag {
 	display: flex;
 	align-items: center;
+	gap: 6rpx;
+}
+.rc-video-name {
+	font-size: 20rpx;
+	color: #666;
+	max-width: 300rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.rc-timestamp {
+	font-size: 20rpx;
+	color: #f39c12;
+	flex-shrink: 0;
+}
+
+.load-more-status {
+	width: 100%;
+	text-align: center;
+	padding: 40rpx 0;
+	font-size: 24rpx;
+	color: #444;
 }
 
 .empty-state {
 	text-align: center;
-	padding: 80rpx 0;
+	padding: 100rpx 0;
 }
-
 .empty-text {
 	font-size: 28rpx;
 	color: #555;
@@ -161,11 +237,4 @@ function goToMyComments(videoId) {
 	margin-top: 16rpx;
 }
 
-.load-more-status {
-	width: 100%;
-	text-align: center;
-	padding: 60rpx 0;
-	font-size: 24rpx;
-	color: #444;
-}
 </style>
