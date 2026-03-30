@@ -581,10 +581,10 @@ onReachBottom(() => {
 .welcome-text { display: flex; flex-direction: column; }
 .user-greeting { font-size: 34rpx; font-weight: 600; color: #fff; margin-bottom: 4rpx; }
 .system-welcome { font-size: 22rpx; color: #888; }
-.stats-badge { background: rgba(108,92,231,0.1); border: 1px solid rgba(108,92,231,0.2); padding: 16rpx 24rpx; border-radius: 20rpx; }
-.stats-item { display: flex; flex-direction: column; align-items: center; }
-.stats-value { font-size: 32rpx; font-weight: bold; color: #6c5ce7; line-height: 1; margin-bottom: 4rpx; }
-.stats-label { font-size: 18rpx; color: #666; text-transform: uppercase; }
+.stats-badge { background: rgba(108,92,231,0.08); border: 1px solid rgba(108,92,231,0.2); padding: 14rpx 28rpx; border-radius: 16rpx; backdrop-filter: blur(4px); }
+.stats-item { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.stats-value { font-size: 38rpx; font-weight: 800; color: #a29bfe; line-height: 1.1; margin-bottom: 4rpx; text-shadow: 0 0 12rpx rgba(108,92,231,0.2); }
+.stats-label { font-size: 20rpx; color: #94a3b8; font-weight: 500; letter-spacing: 1rpx; }
 
 /* ==================== 管理员样式 ==================== */
 .admin-container { padding: 0 30rpx 40rpx; }
