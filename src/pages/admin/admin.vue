@@ -18,10 +18,16 @@
 					>
 						评论管理
 					</view>
+					<view 
+						:class="['tab-item', tab === 'users' && 'tab-active']" 
+						@click="switchTab('users')"
+					>
+						用户管理
+					</view>
 				</view>
 				<!-- 底部指示条 -->
 				<view class="tab-indicator-container">
-					<view :class="['tab-indicator', tab === 'comments' && 'at-right']"></view>
+					<view :class="['tab-indicator', 'tab-pos-' + tab]"></view>
 				</view>
 			</view>
 
@@ -194,6 +200,73 @@
 					<text>暂无相关评论</text>
 				</view>
 			</view>
+
+			<!-- 用户管理 -->
+			<view v-if="tab === 'users'">
+				<!-- 创建用户表单 -->
+				<view class="create-user-card">
+					<text class="section-title">创建新用户</text>
+					<view class="form-group">
+						<text class="form-label">用户名</text>
+						<input class="dark-input" v-model="newUsername" placeholder="2-20个字符" maxlength="20" />
+					</view>
+					<view class="form-group">
+						<text class="form-label">密码</text>
+						<input class="dark-input" v-model="newPassword" placeholder="至少6个字符" maxlength="32" />
+					</view>
+					<view class="form-group">
+						<text class="form-label">角色</text>
+						<view class="role-selector">
+							<view 
+								:class="['role-option', newRole === 'user' && 'role-active']"
+								@click="newRole = 'user'"
+							>
+								审片员
+							</view>
+							<view 
+								:class="['role-option', newRole === 'admin' && 'role-active']"
+								@click="newRole = 'admin'"
+							>
+								管理员
+							</view>
+						</view>
+					</view>
+					<button class="btn-primary create-user-btn" :loading="creatingUser" @click="createUser">
+						创建用户
+					</button>
+				</view>
+
+				<!-- 用户列表 -->
+				<view class="user-list-header">
+					<text class="section-title">用户列表 ({{ userList.length }})</text>
+				</view>
+				<view class="admin-item-card" v-for="u in userList" :key="u.id">
+					<view class="admin-item-header">
+						<view class="user-avatar-small" :style="{ background: getUserColor(u.username) }">
+							<text class="avatar-letter-s">{{ u.username ? u.username.charAt(0).toUpperCase() : '?' }}</text>
+						</view>
+						<view class="admin-item-info">
+							<text class="admin-item-title">{{ u.username }}</text>
+							<view class="admin-item-meta">
+								<view :class="['role-badge', u.role === 'admin' ? 'role-admin' : 'role-user']">
+									<text>{{ u.role === 'admin' ? '管理员' : '审片员' }}</text>
+								</view>
+								<view class="meta-tag">
+									<text>{{ formatDateSimple(u.created_at) }}</text>
+								</view>
+							</view>
+						</view>
+						<view v-if="u.id != authStore.user?.id">
+							<text class="btn-link danger small-text" @click="deleteUser(u.id, u.username)">
+								<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
+							</text>
+						</view>
+					</view>
+				</view>
+				<view class="empty-state" v-if="userList.length === 0 && !loadingUsers">
+					<text>暂无用户</text>
+				</view>
+			</view>
 		</view>
 
 		<!-- 无权限 -->
@@ -218,6 +291,14 @@ const tab = ref('videos')
 const videoOptions = ref([]) // For selector
 const selectedVideoId = ref(null)
 const expandedId = ref(null)
+
+// User management
+const userList = ref([])
+const loadingUsers = ref(false)
+const newUsername = ref('')
+const newPassword = ref('')
+const newRole = ref('user')
+const creatingUser = ref(false)
 
 // Video pagination
 const videoQuery = ref('')
@@ -281,8 +362,10 @@ function switchTab(newTab) {
 	tab.value = newTab
 	if (newTab === 'videos') {
 		if (videoList.value.length === 0) refreshVideos()
-	} else {
+	} else if (newTab === 'comments') {
 		if (commentList.value.length === 0) refreshComments()
+	} else if (newTab === 'users') {
+		fetchUsers()
 	}
 }
 
@@ -437,6 +520,100 @@ function formatTime(seconds) {
 	const s = Math.floor(seconds % 60)
 	return `${m}:${s.toString().padStart(2, '0')}`
 }
+
+// ==================== 用户管理 ====================
+
+const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
+function getUserColor(username) {
+	if (!username) return avatarColors[0]
+	let hash = 0
+	for (let i = 0; i < username.length; i++) {
+		hash = username.charCodeAt(i) + ((hash << 5) - hash)
+	}
+	return avatarColors[Math.abs(hash) % avatarColors.length]
+}
+
+async function fetchUsers() {
+	loadingUsers.value = true
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/admin/users`,
+			method: 'GET',
+			header: authStore.getAuthHeader()
+		})
+		if (res.statusCode === 200) {
+			userList.value = res.data.users || []
+		}
+	} catch (e) {
+		console.error('Fetch users failed:', e)
+	} finally {
+		loadingUsers.value = false
+	}
+}
+
+async function createUser() {
+	if (!newUsername.value.trim()) {
+		return uni.showToast({ title: '请输入用户名', icon: 'none' })
+	}
+	if (!newPassword.value || newPassword.value.length < 6) {
+		return uni.showToast({ title: '密码至少6个字符', icon: 'none' })
+	}
+
+	creatingUser.value = true
+	try {
+		const res = await uni.request({
+			url: `${authStore.API_BASE}/api/admin/users`,
+			method: 'POST',
+			header: {
+				'Content-Type': 'application/json',
+				...authStore.getAuthHeader()
+			},
+			data: {
+				username: newUsername.value.trim(),
+				password: newPassword.value,
+				role: newRole.value
+			}
+		})
+		if (res.statusCode === 201) {
+			uni.showToast({ title: '用户创建成功', icon: 'success' })
+			newUsername.value = ''
+			newPassword.value = ''
+			newRole.value = 'user'
+			fetchUsers()
+		} else {
+			throw new Error(res.data?.error || '创建失败')
+		}
+	} catch (e) {
+		uni.showToast({ title: e.message, icon: 'none' })
+	} finally {
+		creatingUser.value = false
+	}
+}
+
+async function deleteUser(id, username) {
+	uni.showModal({
+		title: '管理员操作',
+		content: `确定要删除用户「${username}」及其所有数据？`,
+		success: async (res) => {
+			if (!res.confirm) return
+			try {
+				const resp = await uni.request({
+					url: `${authStore.API_BASE}/api/admin/users/${id}`,
+					method: 'DELETE',
+					header: authStore.getAuthHeader()
+				})
+				if (resp.statusCode === 200) {
+					uni.showToast({ title: '已删除', icon: 'success' })
+					fetchUsers()
+				} else {
+					throw new Error(resp.data?.error || '删除失败')
+				}
+			} catch (e) {
+				uni.showToast({ title: e.message, icon: 'none' })
+			}
+		}
+	})
+}
 </script>
 
 <style scoped>
@@ -484,7 +661,7 @@ function formatTime(seconds) {
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: 50%;
+	width: 33.33%;
 	height: 100%;
 	background: linear-gradient(90deg, #6c5ce7, #a855f7);
 	border-radius: 2rpx;
@@ -492,8 +669,16 @@ function formatTime(seconds) {
 	transform: translateX(0);
 }
 
-.at-right {
+.tab-pos-videos {
+	transform: translateX(0);
+}
+
+.tab-pos-comments {
 	transform: translateX(100%);
+}
+
+.tab-pos-users {
+	transform: translateX(200%);
 }
 
 .filter-section {
@@ -895,5 +1080,103 @@ function formatTime(seconds) {
 	font-size: 32rpx;
 	color: #555;
 	margin: 20rpx 0 40rpx;
+}
+
+/* 用户管理样式 */
+.create-user-card {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 20rpx;
+	padding: 30rpx;
+	margin-bottom: 30rpx;
+}
+
+.section-title {
+	font-size: 28rpx;
+	color: #e0e0e0;
+	font-weight: 600;
+	margin-bottom: 24rpx;
+	display: block;
+}
+
+.form-group {
+	margin-bottom: 24rpx;
+}
+
+.form-label {
+	font-size: 24rpx;
+	color: #888;
+	margin-bottom: 12rpx;
+	display: block;
+}
+
+.role-selector {
+	display: flex;
+	gap: 16rpx;
+}
+
+.role-option {
+	flex: 1;
+	text-align: center;
+	padding: 16rpx 0;
+	font-size: 26rpx;
+	color: #666;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 12rpx;
+	transition: all 0.3s;
+}
+
+.role-active {
+	background: linear-gradient(135deg, rgba(108, 92, 231, 0.2), rgba(168, 85, 247, 0.2));
+	border-color: rgba(108, 92, 231, 0.5);
+	color: #fff;
+	font-weight: 600;
+}
+
+.create-user-btn {
+	width: 100%;
+	height: 80rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 8rpx;
+}
+
+.user-list-header {
+	margin-bottom: 20rpx;
+}
+
+.user-avatar-small {
+	width: 60rpx;
+	height: 60rpx;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+}
+
+.avatar-letter-s {
+	font-size: 26rpx;
+	color: #fff;
+	font-weight: 700;
+}
+
+.role-badge {
+	font-size: 20rpx;
+	padding: 2rpx 12rpx;
+	border-radius: 6rpx;
+	margin-right: 12rpx;
+}
+
+.role-admin {
+	background: rgba(108, 92, 231, 0.2);
+	color: #a78bfa;
+}
+
+.role-user {
+	background: rgba(16, 185, 129, 0.15);
+	color: #34d399;
 }
 </style>

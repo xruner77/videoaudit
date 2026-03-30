@@ -78,7 +78,7 @@ return function (App $app, PDO $db) {
             'limit' => $limit
         ]));
         return $response->withHeader('Content-Type', 'application/json');
-    });
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
     // POST /api/videos/{id}/view - 增加播放量
     $app->post('/api/videos/{id}/view', function (Request $request, Response $response, array $args) use ($db) {
@@ -87,7 +87,7 @@ return function (App $app, PDO $db) {
         $stmt->execute([$videoId]);
         $response->getBody()->write(json_encode(['message' => 'success']));
         return $response->withHeader('Content-Type', 'application/json');
-    });
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
     // GET /api/videos/all-names - 获取所有视频名称 (仅管理员, 用于过滤器)
     $app->get('/api/videos/all-names', function (Request $request, Response $response) use ($db) {

@@ -44,19 +44,6 @@ export const useAuthStore = defineStore('auth', () => {
 		return res.data
 	}
 
-	async function register(username, password) {
-		const res = await uni.request({
-			url: `${API_BASE}/api/auth/register`,
-			method: 'POST',
-			header: { 'Content-Type': 'application/json' },
-			data: { username, password }
-		})
-		if (res.statusCode !== 201) {
-			throw new Error(res.data?.error || '注册失败')
-		}
-		return res.data
-	}
-
 	function logout() {
 		token.value = ''
 		user.value = null
@@ -71,7 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
 
 	return {
 		token, user, isLoggedIn, isAdmin, username,
-		init, login, register, logout, getAuthHeader,
+		init, login, logout, getAuthHeader,
 		API_BASE
 	}
 })

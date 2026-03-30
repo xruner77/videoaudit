@@ -336,6 +336,7 @@ const {
 	const res = await uni.request({
 		url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
 		method: 'GET',
+		header: authStore.getAuthHeader(),
 		data: params
 	})
 	if (res.statusCode === 200) {
@@ -597,7 +598,8 @@ async function fetchVideoDetail() {
 	try {
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET'
+			method: 'GET',
+			header: authStore.getAuthHeader()
 		})
 		if (res.statusCode === 200) {
 			const video = (res.data.videos || []).find(v => v.id == videoId.value)
@@ -635,7 +637,8 @@ async function fetchMarkers() {
 	try {
 		const res = await uni.request({
 			url: `${authStore.API_BASE}/api/comments/${videoId.value}/markers`,
-			method: 'GET'
+			method: 'GET',
+			header: authStore.getAuthHeader()
 		})
 		if (res.statusCode === 200) {
 			markers.value = res.data.markers || []
@@ -648,7 +651,8 @@ async function fetchMarkers() {
 function incrementViewCount(id) {
 	uni.request({
 		url: `${authStore.API_BASE}/api/videos/${id}/view`,
-		method: 'POST'
+		method: 'POST',
+		header: authStore.getAuthHeader()
 	})
 }
 

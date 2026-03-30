@@ -9,9 +9,8 @@
 			</view>
 
 			<view class="login-card">
-				<view class="tab-bar">
-					<text :class="['tab-item', !isRegister && 'tab-active']" @click="isRegister = false">登录</text>
-					<text :class="['tab-item', isRegister && 'tab-active']" @click="isRegister = true">注册</text>
+				<view class="card-title">
+					<text class="card-title-text">账号登录</text>
 				</view>
 
 				<view class="form-group">
@@ -29,19 +28,13 @@
 					</view>
 				</view>
 
-				<view class="form-group" v-if="isRegister">
-					<text class="form-label">确认密码</text>
-					<view class="password-input-wrapper">
-						<input class="dark-input pr-80" v-model="confirmPassword" placeholder="请再次输入密码" :password="!showConfirmPassword" maxlength="32" />
-						<view class="eye-icon" @click="showConfirmPassword = !showConfirmPassword">
-							<uni-icons :type="showConfirmPassword ? 'eye-filled' : 'eye-slash'" size="20" color="#888" />
-						</view>
-					</view>
-				</view>
-
-				<button class="btn-primary login-btn" :loading="loading" @click="handleSubmit">
-					{{ isRegister ? '注 册' : '登 录' }}
+				<button class="btn-primary login-btn" :loading="loading" @click="handleLogin">
+					登 录
 				</button>
+
+				<view class="login-hint">
+					<text class="hint-text">账号由管理员分配，如需开通请联系管理员</text>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -52,47 +45,25 @@ import { ref } from 'vue'
 import { useAuthStore } from '../../stores/authStore'
 
 const authStore = useAuthStore()
-const isRegister = ref(false)
 const username = ref('')
 const password = ref('')
-const confirmPassword = ref('')
 const showPassword = ref(false)
-const showConfirmPassword = ref(false)
 const loading = ref(false)
 
-async function handleSubmit() {
+async function handleLogin() {
 	if (!username.value.trim() || !password.value) {
 		return uni.showToast({ title: '请填写完整信息', icon: 'none' })
 	}
 
-	if (isRegister.value) {
-		if (password.value !== confirmPassword.value) {
-			return uni.showToast({ title: '两次密码不一致', icon: 'none' })
-		}
-		if (password.value.length < 6) {
-			return uni.showToast({ title: '密码至少6个字符', icon: 'none' })
-		}
-	}
-
 	loading.value = true
 	try {
-		if (isRegister.value) {
-			await authStore.register(username.value.trim(), password.value)
-			uni.showToast({ title: '注册成功，请登录', icon: 'success' })
-			isRegister.value = false
-			password.value = ''
-			confirmPassword.value = ''
-			showPassword.value = false
-			showConfirmPassword.value = false
-		} else {
-			await authStore.login(username.value.trim(), password.value)
-			uni.showToast({ title: '登录成功', icon: 'success' })
-			setTimeout(() => {
-				uni.reLaunch({ url: '/pages/videoList/videoList' })
-			}, 500)
-		}
+		await authStore.login(username.value.trim(), password.value)
+		uni.showToast({ title: '登录成功', icon: 'success' })
+		setTimeout(() => {
+			uni.reLaunch({ url: '/pages/videoList/videoList' })
+		}, 500)
 	} catch (e) {
-		uni.showToast({ title: e.message || '操作失败', icon: 'none' })
+		uni.showToast({ title: e.message || '登录失败', icon: 'none' })
 	} finally {
 		loading.value = false
 	}
@@ -159,26 +130,13 @@ async function handleSubmit() {
 	backdrop-filter: blur(20px);
 }
 
-.tab-bar {
-	display: flex;
+.card-title {
 	margin-bottom: 40rpx;
-	background: rgba(255, 255, 255, 0.04);
-	border-radius: 12rpx;
-	padding: 6rpx;
-}
-
-.tab-item {
-	flex: 1;
 	text-align: center;
-	padding: 16rpx 0;
-	font-size: 28rpx;
-	color: #666;
-	border-radius: 10rpx;
-	transition: all 0.3s;
 }
 
-.tab-active {
-	background: linear-gradient(135deg, #6c5ce7, #a855f7);
+.card-title-text {
+	font-size: 32rpx;
 	color: #fff;
 	font-weight: 600;
 }
@@ -225,5 +183,15 @@ async function handleSubmit() {
 	padding: 0;
 	font-size: 32rpx;
 	letter-spacing: 8rpx;
+}
+
+.login-hint {
+	text-align: center;
+	margin-top: 28rpx;
+}
+
+.hint-text {
+	font-size: 22rpx;
+	color: #555;
 }
 </style>

@@ -3,7 +3,7 @@
 		<Header title="生活网审片系统" />
 		
 		<!-- 欢迎语与统计 -->
-		<view class="welcome-section" v-if="authStore.isLoggedIn">
+		<view class="welcome-section">
 			<view class="welcome-text">
 				<text class="user-greeting">你好，{{ authStore.user?.username || '用户' }}</text>
 				<text class="system-welcome">欢迎使用审片系统</text>
@@ -80,7 +80,7 @@
 			</view>
 		</view>
 
-		<view class="fab" @click="goUpload" v-if="authStore.isLoggedIn">
+		<view class="fab" @click="goUpload">
 			<text class="fab-icon"><uni-icons type="plusempty" size="24" color="#fff"/></text>
 		</view>
 
@@ -116,6 +116,7 @@ const {
 	const res = await uni.request({
 		url: `${authStore.API_BASE}/api/videos`,
 		method: 'GET',
+		header: authStore.getAuthHeader(),
 		data: {
 			...params,
 			q: searchQuery.value
@@ -131,6 +132,10 @@ const {
 }, { limit: 10 })
 
 onLoad(() => {
+	if (!authStore.isLoggedIn) {
+		uni.reLaunch({ url: '/pages/login/login' })
+		return
+	}
 	onSearch()
 })
 

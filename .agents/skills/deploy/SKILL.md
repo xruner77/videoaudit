@@ -9,7 +9,7 @@ description: "一键打包并使用 SCP 部署 H5 代码及按需上传后端代
 
 ## 目标服务器信息
 
-- **服务器地址**: `va.xruner.tk`
+- **服务器地址**: `a2.xruner.tk`
 - **前端目标目录**: `/www/wwwroot/va.xruner.tk`
 - **后端目录**: `/www/wwwroot/va.xruner.tk/server`
 - **SSH 私钥路径**: `~/.ssh/a2.xruner.tk`
@@ -27,7 +27,7 @@ description: "一键打包并使用 SCP 部署 H5 代码及按需上传后端代
    ```
 2. **使用 SCP 上传完整前端**:
    ```powershell
-   scp -i ~/.ssh/a2.xruner.tk -r dist/build/h5/* root@va.xruner.tk:/www/wwwroot/va.xruner.tk/
+   scp -i ~/.ssh/a2.xruner.tk -r dist/build/h5/* root@a2.xruner.tk:/www/wwwroot/va.xruner.tk/
    ```
 
 ### 2. 按需部署后端 (Server)
@@ -39,10 +39,10 @@ description: "一键打包并使用 SCP 部署 H5 代码及按需上传后端代
 
 ```powershell
 # 同步单个后端文件示例：
-scp -i ~/.ssh/a2.xruner.tk server/<变动的文件名> root@va.xruner.tk:/www/wwwroot/va.xruner.tk/server/<变动的文件名>
+scp -i ~/.ssh/a2.xruner.tk server/<变动的文件名> root@a2.xruner.tk:/www/wwwroot/va.xruner.tk/server/<变动的文件名>
 
 # 例如更新 PHP 接口路由类:
-# scp -i ~/.ssh/a2.xruner.tk server/src/ApiController.php root@va.xruner.tk:/www/wwwroot/va.xruner.tk/server/src/ApiController.php
+# scp -i ~/.ssh/a2.xruner.tk server/src/ApiController.php root@a2.xruner.tk:/www/wwwroot/va.xruner.tk/server/src/ApiController.php
 ```
 
 ### 3. 完成与验证

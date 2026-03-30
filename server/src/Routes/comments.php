@@ -149,7 +149,7 @@ return function (App $app, PDO $db) {
             'limit' => $limit
         ]));
         return $response->withHeader('Content-Type', 'application/json');
-    });
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
     // GET /api/comments/{videoId}/markers - 获取视频评论的所有打点信息 (不分页, 用于时间轴)
     $app->get('/api/comments/{videoId}/markers', function (Request $request, Response $response, array $args) use ($db) {
@@ -165,7 +165,7 @@ return function (App $app, PDO $db) {
         $markers = $stmt->fetchAll();
         $response->getBody()->write(json_encode(['markers' => $markers]));
         return $response->withHeader('Content-Type', 'application/json');
-    });
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
     // POST /api/comments/upload-image - 上传评论图片 (需登录)
     $app->post('/api/comments/upload-image', function (Request $request, Response $response) use ($uploadDir) {
