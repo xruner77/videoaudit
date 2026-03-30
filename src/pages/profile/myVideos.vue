@@ -54,6 +54,7 @@ const {
 	const res = await uni.request({
 		url: `${authStore.API_BASE}/api/videos`,
 		method: 'GET',
+		header: authStore.getAuthHeader(),
 		data: {
 			...params,
 			user_id: authStore.user?.id

@@ -1,44 +1,141 @@
 <template>
 	<view class="page-container">
-		<Header title="后台管理" showBack />
+		<Header title="管理后台" showBack />
 
 		<view class="admin-container" v-if="authStore.isAdmin">
 			<!-- 管理 Tab -->
 			<view class="admin-tabs">
 				<view class="tab-header">
-					<view 
-						:class="['tab-item', tab === 'videos' && 'tab-active']" 
+					<view
+						:class="['tab-item', tab === 'dashboard' && 'tab-active']"
+						@click="switchTab('dashboard')"
+					>
+						概览
+					</view>
+					<view
+						:class="['tab-item', tab === 'videos' && 'tab-active']"
 						@click="switchTab('videos')"
 					>
-						视频管理
+						视频
 					</view>
-					<view 
-						:class="['tab-item', tab === 'comments' && 'tab-active']" 
+					<view
+						:class="['tab-item', tab === 'comments' && 'tab-active']"
 						@click="switchTab('comments')"
 					>
-						评论管理
+						评论
 					</view>
-					<view 
-						:class="['tab-item', tab === 'users' && 'tab-active']" 
+					<view
+						:class="['tab-item', tab === 'users' && 'tab-active']"
 						@click="switchTab('users')"
 					>
-						用户管理
+						用户
 					</view>
 				</view>
-				<!-- 底部指示条 -->
 				<view class="tab-indicator-container">
 					<view :class="['tab-indicator', 'tab-pos-' + tab]"></view>
 				</view>
 			</view>
 
-			<!-- 视频管理 -->
+			<!-- ==================== 概览 Dashboard ==================== -->
+			<view v-if="tab === 'dashboard'" class="dashboard-section">
+				<!-- 统计卡片 -->
+				<view class="stats-row">
+					<view class="stat-card stat-purple">
+						<view class="stat-icon-wrap">
+							<uni-icons type="videocam" size="22" color="#fff" />
+						</view>
+						<view class="stat-body">
+							<text class="stat-number">{{ dashStats.videos }}</text>
+							<text class="stat-label">视频总数</text>
+						</view>
+					</view>
+					<view class="stat-card stat-blue">
+						<view class="stat-icon-wrap">
+							<uni-icons type="chat" size="22" color="#fff" />
+						</view>
+						<view class="stat-body">
+							<text class="stat-number">{{ dashStats.comments }}</text>
+							<text class="stat-label">评论总数</text>
+						</view>
+					</view>
+					<view class="stat-card stat-green">
+						<view class="stat-icon-wrap">
+							<uni-icons type="person" size="22" color="#fff" />
+						</view>
+						<view class="stat-body">
+							<text class="stat-number">{{ dashStats.users }}</text>
+							<text class="stat-label">用户总数</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 最近视频 -->
+				<view class="recent-section">
+					<view class="section-header">
+						<text class="section-title">最近视频</text>
+						<text class="section-more" @click="switchTab('videos')">查看全部 →</text>
+					</view>
+					<view v-if="recentVideos.length === 0" class="empty-hint">
+						<text>暂无视频</text>
+					</view>
+					<view class="recent-list" v-else>
+						<view class="recent-item" v-for="v in recentVideos" :key="v.id" @click="goReview(v.id)">
+							<view class="recent-icon ri-purple">
+								<uni-icons type="videocam" size="16" color="#a78bfa" />
+							</view>
+							<view class="recent-info">
+								<text class="recent-title">{{ v.title }}</text>
+								<text class="recent-meta">{{ v.uploader || '系统' }} · {{ formatDateSimple(v.created_at) }}</text>
+							</view>
+							<view class="recent-badge">
+								<uni-icons type="chat" size="12" color="#888" />
+								<text class="badge-num">{{ v.comment_count || 0 }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- 最近评论 -->
+				<view class="recent-section">
+					<view class="section-header">
+						<text class="section-title">最近评论</text>
+						<text class="section-more" @click="switchTab('comments')">查看全部 →</text>
+					</view>
+					<view v-if="recentComments.length === 0" class="empty-hint">
+						<text>暂无评论</text>
+					</view>
+					<view class="recent-list" v-else>
+						<view class="recent-comment-item" v-for="c in recentComments" :key="c.id">
+							<view class="rc-header">
+								<view class="rc-avatar" :style="{ background: getUserColor(c.username) }">
+									{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}
+								</view>
+								<view class="rc-user-info">
+									<text class="rc-username">{{ c.username }}</text>
+									<text class="rc-date">{{ formatDateSimple(c.created_at) }}</text>
+								</view>
+							</view>
+							<text class="rc-content">{{ c.content }}</text>
+							<view class="rc-footer">
+								<view class="rc-video-tag">
+									<uni-icons type="videocam" size="12" color="#888" />
+									<text class="rc-video-name">{{ c.video_title || '未知视频' }}</text>
+								</view>
+								<text class="rc-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<!-- ==================== 视频管理 ==================== -->
 			<view v-if="tab === 'videos'">
 				<view class="filter-section">
 					<view class="search-box-wrapper">
 						<uni-icons type="search" size="18" color="#888" class="search-icon" />
-						<input 
-							class="search-input" 
-							v-model="videoQuery" 
+						<input
+							class="search-input"
+							v-model="videoQuery"
 							placeholder="搜索视频标题..."
 							confirm-type="search"
 							@confirm="onSearchVideos"
@@ -49,9 +146,9 @@
 					</view>
 				</view>
 
-				<view 
-					class="admin-item-card" 
-					v-for="v in videoList" 
+				<view
+					class="admin-item-card"
+					v-for="v in videoList"
 					:key="v.id"
 					:class="{ 'item-expanded': expandedId === v.id }"
 				>
@@ -115,14 +212,14 @@
 				</view>
 			</view>
 
-			<!-- 评论管理 -->
+			<!-- ==================== 评论管理 ==================== -->
 			<view v-if="tab === 'comments'">
 				<view class="filter-section">
 					<view class="search-box-wrapper">
 						<uni-icons type="search" size="18" color="#888" class="search-icon" />
-						<input 
-							class="search-input" 
-							v-model="videoSearchQuery" 
+						<input
+							class="search-input"
+							v-model="videoSearchQuery"
 							placeholder="按视频标题过滤..."
 							@focus="showSearchResult = true"
 							@input="showSearchResult = true"
@@ -131,19 +228,19 @@
 							<uni-icons type="closeempty" size="14" color="#888" />
 						</view>
 					</view>
-					
+
 					<!-- 结果下拉列表 -->
 					<view class="search-results-list" v-if="showSearchResult && filteredVideoOptions.length > 0">
-						<view 
+						<view
 							class="search-result-item"
-							:class="{ active: !selectedVideoId }" 
+							:class="{ active: !selectedVideoId }"
 							@click="selectVideoFilter(null)"
 						>
 							<text>全部视频</text>
 						</view>
-						<view 
-							class="search-result-item" 
-							v-for="v in filteredVideoOptions" 
+						<view
+							class="search-result-item"
+							v-for="v in filteredVideoOptions"
 							:key="v.id"
 							:class="{ active: selectedVideoId === v.id }"
 							@click="selectVideoFilter(v)"
@@ -163,7 +260,7 @@
 				<view class="admin-comment-card" v-for="c in commentList" :key="c.id">
 					<view class="comment-card-header">
 						<view class="comment-user-info">
-							<view class="admin-user-avatar">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
+							<view class="admin-user-avatar" :style="{ background: getUserColor(c.username) }">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
 							<text class="comment-username">{{ c.username }}</text>
 						</view>
 						<view class="comment-video-tag">
@@ -171,7 +268,7 @@
 							<text class="video-title-tag">{{ c.video_title || '未知视频' }}</text>
 						</view>
 					</view>
-					
+
 					<view class="comment-card-body">
 						<text class="comment-text-content">{{ c.content }}</text>
 					</view>
@@ -189,7 +286,7 @@
 						</view>
 					</view>
 				</view>
-				
+
 				<view class="load-more-status" v-if="commentList.length > 0">
 					<text v-if="loadingComments">正在加载...</text>
 					<text v-else-if="hasMoreComments" @click="loadNextComments">加载更多评论</text>
@@ -201,7 +298,7 @@
 				</view>
 			</view>
 
-			<!-- 用户管理 -->
+			<!-- ==================== 用户管理 ==================== -->
 			<view v-if="tab === 'users'">
 				<!-- 创建用户表单 -->
 				<view class="create-user-card">
@@ -217,13 +314,13 @@
 					<view class="form-group">
 						<text class="form-label">角色</text>
 						<view class="role-selector">
-							<view 
+							<view
 								:class="['role-option', newRole === 'user' && 'role-active']"
 								@click="newRole = 'user'"
 							>
 								审片员
 							</view>
-							<view 
+							<view
 								:class="['role-option', newRole === 'admin' && 'role-active']"
 								@click="newRole = 'admin'"
 							>
@@ -287,12 +384,59 @@ import { usePagination } from '@/composables/usePagination'
 
 const authStore = useAuthStore()
 
-const tab = ref('videos')
-const videoOptions = ref([]) // For selector
+const tab = ref('dashboard')
+const videoOptions = ref([])
 const selectedVideoId = ref(null)
 const expandedId = ref(null)
 
-// User management
+// ==================== Dashboard ====================
+const dashStats = ref({ videos: 0, comments: 0, users: 0 })
+const recentVideos = ref([])
+const recentComments = ref([])
+
+async function fetchDashboard() {
+	try {
+		// 并行请求：视频总数+最近5条、评论总数+最近5条、用户列表
+		const [videoRes, commentRes, userRes] = await Promise.all([
+			uni.request({
+				url: `${authStore.API_BASE}/api/videos`,
+				method: 'GET',
+				header: authStore.getAuthHeader(),
+				data: { limit: 5 }
+			}),
+			uni.request({
+				url: `${authStore.API_BASE}/api/admin/comments`,
+				method: 'GET',
+				header: authStore.getAuthHeader(),
+				data: { limit: 5 }
+			}),
+			uni.request({
+				url: `${authStore.API_BASE}/api/admin/users`,
+				method: 'GET',
+				header: authStore.getAuthHeader()
+			})
+		])
+
+		if (videoRes.statusCode === 200) {
+			dashStats.value.videos = videoRes.data.total || 0
+			recentVideos.value = videoRes.data.videos || []
+		}
+		if (commentRes.statusCode === 200) {
+			dashStats.value.comments = commentRes.data.total || 0
+			recentComments.value = commentRes.data.comments || []
+		}
+		if (userRes.statusCode === 200) {
+			const users = userRes.data.users || []
+			dashStats.value.users = users.length
+			// 同时填充用户列表缓存，切换到用户 tab 时不用再请求
+			userList.value = users
+		}
+	} catch (e) {
+		console.error('Dashboard fetch failed:', e)
+	}
+}
+
+// ==================== User management ====================
 const userList = ref([])
 const loadingUsers = ref(false)
 const newUsername = ref('')
@@ -300,7 +444,7 @@ const newPassword = ref('')
 const newRole = ref('user')
 const creatingUser = ref(false)
 
-// Video pagination
+// ==================== Video pagination ====================
 const videoQuery = ref('')
 const {
 	dataList: videoList,
@@ -312,6 +456,7 @@ const {
 	const res = await uni.request({
 		url: `${authStore.API_BASE}/api/videos`,
 		method: 'GET',
+		header: authStore.getAuthHeader(),
 		data: {
 			...params,
 			q: videoQuery.value
@@ -323,11 +468,10 @@ const {
 	return { data: [], total: 0 }
 }, { limit: 20 })
 
-
-// Comment pagination
-const videoSearchQuery = ref('') // Search in selector
-const commentSearchQuery = ref('') // Real search q
-const showSearchResult = ref(false) // Selector dropdown
+// ==================== Comment pagination ====================
+const videoSearchQuery = ref('')
+const commentSearchQuery = ref('')
+const showSearchResult = ref(false)
 
 const {
 	dataList: commentList,
@@ -351,21 +495,23 @@ const {
 	}
 	return { data: [], total: 0 }
 }, { limit: 20 })
+
 onShow(() => {
 	if (!authStore.isAdmin) return
-	refreshVideos()
-	refreshComments()
+	fetchDashboard()
 	fetchVideoOptions()
 })
 
 function switchTab(newTab) {
 	tab.value = newTab
-	if (newTab === 'videos') {
+	if (newTab === 'dashboard') {
+		fetchDashboard()
+	} else if (newTab === 'videos') {
 		if (videoList.value.length === 0) refreshVideos()
 	} else if (newTab === 'comments') {
 		if (commentList.value.length === 0) refreshComments()
 	} else if (newTab === 'users') {
-		fetchUsers()
+		if (userList.value.length === 0) fetchUsers()
 	}
 }
 
@@ -392,8 +538,8 @@ async function fetchVideoOptions() {
 const filteredVideoOptions = computed(() => {
 	if (!videoSearchQuery.value) return videoOptions.value
 	const q = videoSearchQuery.value.toLowerCase()
-	return videoOptions.value.filter(v => 
-		v.title.toLowerCase().includes(q) || 
+	return videoOptions.value.filter(v =>
+		v.title.toLowerCase().includes(q) ||
 		(v.uploader && v.uploader.toLowerCase().includes(q))
 	)
 })
@@ -415,16 +561,6 @@ function refreshComments() {
 function handleClearVideoQuery() {
 	videoQuery.value = ''
 	refreshVideos()
-}
-
-
-function onVideoFilterChange(e) {
-	const index = e.detail.value
-	if (index === 0) {
-		selectedVideoId.value = null
-	} else {
-		selectedVideoId.value = videos.value[index - 1]?.id || null
-	}
 }
 
 function selectVideoFilter(video) {
@@ -622,13 +758,14 @@ async function deleteUser(id, username) {
 	padding: 0 30rpx 40rpx;
 }
 
+/* ==================== Tabs ==================== */
 .admin-tabs {
 	position: sticky;
 	top: 88rpx;
-	z-index: 110; /* 必须高于 search-box-wrapper 的 101 */
+	z-index: 110;
 	padding-top: 10rpx;
 	margin-bottom: 30rpx;
-	background: #1a1a2e !important; /* 强制使用实体背景 */
+	background: #1a1a2e !important;
 }
 
 .tab-header {
@@ -638,8 +775,8 @@ async function deleteUser(id, username) {
 }
 
 .tab-item {
-	font-size: 28rpx;
-	color: #999; /* 提高非激活状态的文字亮度 */
+	font-size: 26rpx;
+	color: #777;
 	padding: 20rpx 0;
 	transition: all 0.3s ease;
 	font-weight: 500;
@@ -661,7 +798,7 @@ async function deleteUser(id, username) {
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: 33.33%;
+	width: 25%;
 	height: 100%;
 	background: linear-gradient(90deg, #6c5ce7, #a855f7);
 	border-radius: 2rpx;
@@ -669,17 +806,295 @@ async function deleteUser(id, username) {
 	transform: translateX(0);
 }
 
-.tab-pos-videos {
+.tab-pos-dashboard {
 	transform: translateX(0);
 }
 
-.tab-pos-comments {
+.tab-pos-videos {
 	transform: translateX(100%);
 }
 
-.tab-pos-users {
+.tab-pos-comments {
 	transform: translateX(200%);
 }
+
+.tab-pos-users {
+	transform: translateX(300%);
+}
+
+/* ==================== Dashboard ==================== */
+
+.dashboard-section {
+	animation: fadeIn 0.3s ease;
+}
+
+.stats-row {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16rpx;
+	margin-bottom: 36rpx;
+}
+
+.stat-card {
+	border-radius: 20rpx;
+	padding: 24rpx 20rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+	position: relative;
+	overflow: hidden;
+}
+
+.stat-card::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 20rpx;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	pointer-events: none;
+}
+
+.stat-purple {
+	background: linear-gradient(135deg, rgba(108, 92, 231, 0.2) 0%, rgba(108, 92, 231, 0.05) 100%);
+}
+
+.stat-blue {
+	background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%);
+}
+
+.stat-green {
+	background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.05) 100%);
+}
+
+.stat-icon-wrap {
+	width: 52rpx;
+	height: 52rpx;
+	border-radius: 14rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.stat-purple .stat-icon-wrap {
+	background: linear-gradient(135deg, #6c5ce7, #a855f7);
+}
+
+.stat-blue .stat-icon-wrap {
+	background: linear-gradient(135deg, #3b82f6, #60a5fa);
+}
+
+.stat-green .stat-icon-wrap {
+	background: linear-gradient(135deg, #10b981, #34d399);
+}
+
+.stat-body {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.stat-number {
+	font-size: 40rpx;
+	font-weight: 700;
+	color: #fff;
+	line-height: 1.2;
+}
+
+.stat-card .stat-label {
+	font-size: 20rpx;
+	color: #999;
+	margin-top: 2rpx;
+}
+
+/* 最近活动 */
+.recent-section {
+	margin-bottom: 30rpx;
+}
+
+.section-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20rpx;
+}
+
+.section-title {
+	font-size: 28rpx;
+	color: #e0e0e0;
+	font-weight: 600;
+	display: block;
+}
+
+.section-more {
+	font-size: 22rpx;
+	color: #6c5ce7;
+}
+
+.recent-list {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 20rpx;
+	overflow: hidden;
+}
+
+.recent-item {
+	display: flex;
+	align-items: center;
+	padding: 22rpx 24rpx;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.recent-item:last-child {
+	border-bottom: none;
+}
+
+.recent-item:active {
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.recent-icon {
+	width: 48rpx;
+	height: 48rpx;
+	border-radius: 12rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 18rpx;
+	flex-shrink: 0;
+}
+
+.ri-purple {
+	background: rgba(108, 92, 231, 0.12);
+}
+
+.recent-info {
+	flex: 1;
+	overflow: hidden;
+}
+
+.recent-title {
+	font-size: 26rpx;
+	color: #e0e0e0;
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 500;
+}
+
+.recent-meta {
+	font-size: 20rpx;
+	color: #666;
+	display: block;
+	margin-top: 4rpx;
+}
+
+.recent-badge {
+	display: flex;
+	align-items: center;
+	gap: 4rpx;
+	margin-left: 12rpx;
+	flex-shrink: 0;
+}
+
+.badge-num {
+	font-size: 20rpx;
+	color: #888;
+}
+
+/* 最近评论 */
+.recent-comment-item {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 16rpx;
+	padding: 22rpx 24rpx;
+	margin-bottom: 16rpx;
+}
+
+.rc-header {
+	display: flex;
+	align-items: center;
+	margin-bottom: 14rpx;
+}
+
+.rc-avatar {
+	width: 40rpx;
+	height: 40rpx;
+	border-radius: 50%;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20rpx;
+	font-weight: bold;
+	margin-right: 12rpx;
+	flex-shrink: 0;
+}
+
+.rc-user-info {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.rc-username {
+	font-size: 24rpx;
+	color: #e0e0e0;
+	font-weight: 500;
+}
+
+.rc-date {
+	font-size: 20rpx;
+	color: #555;
+}
+
+.rc-content {
+	font-size: 26rpx;
+	color: #dcdce6;
+	line-height: 1.5;
+	display: block;
+	margin-bottom: 12rpx;
+}
+
+.rc-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.rc-video-tag {
+	display: flex;
+	align-items: center;
+	gap: 6rpx;
+}
+
+.rc-video-name {
+	font-size: 20rpx;
+	color: #666;
+	max-width: 240rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.rc-timestamp {
+	font-size: 20rpx;
+	color: #f39c12;
+}
+
+.empty-hint {
+	text-align: center;
+	padding: 40rpx 0;
+}
+
+.empty-hint text {
+	color: #444;
+	font-size: 24rpx;
+}
+
+/* ==================== Shared styles ==================== */
 
 .filter-section {
 	margin-bottom: 30rpx;
@@ -745,20 +1160,6 @@ async function deleteUser(id, username) {
 
 .search-result-item.active {
 	background: rgba(108, 92, 231, 0.15);
-}
-
-.result-thumb {
-	width: 80rpx;
-	height: 60rpx;
-	background: #000;
-	border-radius: 6rpx;
-	margin-right: 20rpx;
-	overflow: hidden;
-}
-
-.result-thumb video {
-	width: 100%;
-	height: 100%;
 }
 
 .result-info {
@@ -892,7 +1293,7 @@ async function deleteUser(id, username) {
 	font-weight: 500;
 }
 
-.stat-label {
+.details-stat .stat-label {
 	font-size: 20rpx;
 	color: #555;
 	text-transform: uppercase;
@@ -903,7 +1304,8 @@ async function deleteUser(id, username) {
 	display: flex;
 	align-items: center;
 	gap: 24rpx;
-	padding-top: 10rpx;
+	padding: 24rpx 30rpx;
+	border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .btn-link {
@@ -933,12 +1335,7 @@ async function deleteUser(id, username) {
 	width: 100%;
 }
 
-.admin-item-actions {
-	padding: 24rpx 30rpx;
-	border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-/* 评论卡片样式升级 */
+/* 评论卡片样式 */
 .admin-comment-card {
 	background: rgba(255, 255, 255, 0.03);
 	border: 1px solid rgba(255, 255, 255, 0.06);
@@ -967,7 +1364,6 @@ async function deleteUser(id, username) {
 .admin-user-avatar {
 	width: 40rpx;
 	height: 40rpx;
-	background: #6c5ce7;
 	border-radius: 50%;
 	color: #fff;
 	display: flex;
@@ -1041,11 +1437,6 @@ async function deleteUser(id, username) {
 	color: #666;
 }
 
-.small-btn {
-	padding: 8rpx 20rpx !important;
-	font-size: 22rpx;
-}
-
 .load-more-status {
 	text-align: center;
 	padding: 40rpx 0;
@@ -1089,14 +1480,6 @@ async function deleteUser(id, username) {
 	border-radius: 20rpx;
 	padding: 30rpx;
 	margin-bottom: 30rpx;
-}
-
-.section-title {
-	font-size: 28rpx;
-	color: #e0e0e0;
-	font-weight: 600;
-	margin-bottom: 24rpx;
-	display: block;
 }
 
 .form-group {
