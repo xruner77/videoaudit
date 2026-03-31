@@ -28,65 +28,70 @@ $app->options('/{routes:.+}', function ($request, $response) {
     return $response;
 });
 
-// ---------- 数据库初始化 ----------
-$dbPath = __DIR__ . '/../database.sqlite';
-$db = new PDO('sqlite:' . $dbPath);
+// ---------- 数据库初始化 (MySQL) ----------
+$dbConfig = require __DIR__ . '/../db_config.php';
+$dsn = sprintf(
+    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+    $dbConfig['host'],
+    $dbConfig['port'],
+    $dbConfig['dbname'],
+    $dbConfig['charset']
+);
+$db = new PDO($dsn, $dbConfig['username'], $dbConfig['password']);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-$db->exec('PRAGMA journal_mode=WAL');
-$db->exec('PRAGMA foreign_keys=ON');
 
-// 建表
+// 建表 (MySQL 语法)
 $db->exec("
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT DEFAULT 'user',
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'user',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
 
 $db->exec("
     CREATE TABLE IF NOT EXISTS videos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
         url TEXT NOT NULL,
-        type TEXT DEFAULT 'local',
-        user_id INTEGER NOT NULL,
-        views INTEGER DEFAULT 0,
-        duration INTEGER DEFAULT 0,
+        type VARCHAR(20) DEFAULT 'local',
+        user_id INT NOT NULL,
+        views INT DEFAULT 0,
+        duration INT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
-    )
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
 
 try {
-    $db->exec("ALTER TABLE videos ADD COLUMN views INTEGER DEFAULT 0");
+    $db->exec("ALTER TABLE videos ADD COLUMN views INT DEFAULT 0");
 } catch (\PDOException $e) {}
 
 try {
-    $db->exec("ALTER TABLE videos ADD COLUMN duration INTEGER DEFAULT 0");
+    $db->exec("ALTER TABLE videos ADD COLUMN duration INT DEFAULT 0");
 } catch (\PDOException $e) {}
 
 $db->exec("
     CREATE TABLE IF NOT EXISTS comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        video_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        content TEXT DEFAULT '',
-        timestamp REAL NOT NULL,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        video_id INT NOT NULL,
+        user_id INT NOT NULL,
+        content TEXT,
+        `timestamp` DOUBLE NOT NULL,
         image_url TEXT DEFAULT NULL,
-        parent_id INTEGER DEFAULT NULL,
+        parent_id INT DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id)
-    )
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
 
 // 兼容旧表：尝试添加新列
 try { $db->exec("ALTER TABLE comments ADD COLUMN image_url TEXT DEFAULT NULL"); } catch (\PDOException $e) {}
-try { $db->exec("ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL"); } catch (\PDOException $e) {}
+try { $db->exec("ALTER TABLE comments ADD COLUMN parent_id INT DEFAULT NULL"); } catch (\PDOException $e) {}
 
 // 确保评论图片上传目录存在
 $commentImageDir = __DIR__ . '/../uploads/images';

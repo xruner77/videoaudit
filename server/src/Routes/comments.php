@@ -133,7 +133,7 @@ return function (App $app, PDO $db) {
             FROM comments c
             LEFT JOIN users u ON c.user_id = u.id
             WHERE c.video_id = ?
-            ORDER BY c.timestamp ASC
+            ORDER BY c.`timestamp` ASC
             LIMIT ? OFFSET ?
         ');
         $stmt->bindValue(1, $videoId, PDO::PARAM_INT);
@@ -155,11 +155,11 @@ return function (App $app, PDO $db) {
     $app->get('/api/comments/{videoId}/markers', function (Request $request, Response $response, array $args) use ($db) {
         $videoId = (int) $args['videoId'];
         $stmt = $db->prepare('
-            SELECT c.id, c.timestamp, u.username 
+            SELECT c.id, c.`timestamp`, u.username 
             FROM comments c 
             LEFT JOIN users u ON c.user_id = u.id 
             WHERE c.video_id = ? 
-            ORDER BY c.timestamp ASC
+            ORDER BY c.`timestamp` ASC
         ');
         $stmt->execute([$videoId]);
         $markers = $stmt->fetchAll();
@@ -251,7 +251,7 @@ return function (App $app, PDO $db) {
         }
 
         $now = date('Y-m-d H:i:s');
-        $stmt = $db->prepare('INSERT INTO comments (video_id, user_id, content, timestamp, image_url, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt = $db->prepare('INSERT INTO comments (video_id, user_id, content, `timestamp`, image_url, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([$videoId, $user->sub, $content, $timestamp, $imageUrl ?: null, $parentId, $now]);
 
         $commentId = $db->lastInsertId();
