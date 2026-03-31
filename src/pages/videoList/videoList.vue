@@ -326,34 +326,12 @@ import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/authStore'
 import Header from '@/components/Header.vue'
 import { usePagination } from '@/composables/usePagination'
+import { formatDuration, formatTime, getVideoThumbUrl, getUserColor, formatDateSimple } from '@/composables/useUtils'
 
 const authStore = useAuthStore()
 
 // ==================== 共用 ====================
 function goReview(id) { uni.navigateTo({ url: `/pages/review/review?id=${id}` }) }
-function formatDuration(seconds) {
-	if (!seconds) return '00:00'
-	const m = Math.floor(seconds / 60); const s = seconds % 60
-	return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-}
-function formatTime(seconds) {
-	if (!seconds || seconds < 0) return '0:00'
-	const m = Math.floor(seconds / 60); const s = Math.floor(seconds % 60)
-	return `${m}:${s.toString().padStart(2, '0')}`
-}
-function getVideoThumbUrl(video) {
-	if (!video || !video.url) return ''
-	let url = video.type === 'local' ? `${authStore.API_BASE}${video.url}` : video.url
-	if (!url.includes('#t=')) url += '#t=0.5'
-	return url
-}
-const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
-function getUserColor(username) {
-	if (!username) return avatarColors[0]
-	let hash = 0
-	for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash)
-	return avatarColors[Math.abs(hash) % avatarColors.length]
-}
 
 // ==================== 管理员：Dashboard ====================
 const adminTab = ref('dashboard')
@@ -381,11 +359,6 @@ function switchAdminTab(newTab) {
 	else if (newTab === 'videos' && adminVideoList.value.length === 0) refreshAdminVideos()
 	else if (newTab === 'comments' && commentList.value.length === 0) refreshComments()
 	else if (newTab === 'users' && userList.value.length === 0) fetchUsers()
-}
-function formatDateSimple(dateStr) {
-	if (!dateStr) return ''
-	const d = new Date(dateStr)
-	return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
 // ==================== 管理员：视频管理 ====================

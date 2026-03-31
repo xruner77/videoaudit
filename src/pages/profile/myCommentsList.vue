@@ -45,6 +45,7 @@ import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
+import { getUserColor, formatDateSimple, formatTime } from '../../composables/useUtils'
 
 const authStore = useAuthStore()
 
@@ -111,26 +112,7 @@ async function deleteComment(id) {
 	})
 }
 
-const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
-function getUserColor(username) {
-	if (!username) return avatarColors[0]
-	let hash = 0
-	for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash)
-	return avatarColors[Math.abs(hash) % avatarColors.length]
-}
 
-function formatDateSimple(dateStr) {
-	if (!dateStr) return ''
-	const d = new Date(dateStr)
-	return `${d.getMonth() + 1}月${d.getDate()}日`
-}
-
-function formatTime(seconds) {
-	if (!seconds || seconds < 0) return '0:00'
-	const m = Math.floor(seconds / 60)
-	const s = Math.floor(seconds % 60)
-	return `${m}:${s.toString().padStart(2, '0')}`
-}
 </script>
 
 <style scoped>

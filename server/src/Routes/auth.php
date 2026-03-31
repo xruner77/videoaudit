@@ -10,9 +10,9 @@ use Slim\App;
 /**
  * 认证路由: 登录、获取当前用户、管理员用户管理
  */
-return function (App $app, PDO $db) {
+return function (App $app, PDO $db, array $config) {
 
-    $jwtSecret = 'videoaudit_jwt_secret_key_2026';
+    $jwtSecret = $config['jwt_secret'];
     $uploadDir = __DIR__ . '/../../uploads';
 
     // POST /api/auth/login

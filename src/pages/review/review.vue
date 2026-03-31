@@ -305,6 +305,7 @@ import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
+import { formatTime, getUserColor as getAvatarColor } from '../../composables/useUtils'
 
 const authStore = useAuthStore()
 
@@ -485,15 +486,7 @@ function getReplyToUsername(parentId) {
 	return p ? p.username : '未知'
 }
 
-const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
-function getAvatarColor(username) {
-	if (!username) return avatarColors[0]
-	let hash = 0
-	for (let i = 0; i < username.length; i++) {
-		hash = username.charCodeAt(i) + ((hash << 5) - hash)
-	}
-	return avatarColors[Math.abs(hash) % avatarColors.length]
-}
+
 
 function getAvatarLetter(username) {
 	return username ? username.charAt(0).toUpperCase() : '?'
@@ -765,7 +758,7 @@ async function toggleFullscreen() {
 			if (document.exitFullscreen && document.fullscreenElement) {
 				await document.exitFullscreen()
 			}
-		} catch (e) {}
+		} catch (e) { console.warn('exitFullscreen failed:', e) }
 		isFullscreen.value = false
 		isRotated.value = false
 	}
@@ -1018,12 +1011,7 @@ function goLogin() {
 	uni.navigateTo({ url: '/pages/login/login' })
 }
 
-function formatTime(seconds) {
-	if (!seconds || seconds < 0) return '0:00'
-	const m = Math.floor(seconds / 60)
-	const s = Math.floor(seconds % 60)
-	return `${m}:${s.toString().padStart(2, '0')}`
-}
+
 
 function formatRelativeTime(dateStr) {
 	if (!dateStr) return '';

@@ -82,16 +82,7 @@ import { ref, computed, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
-
-const avatarColors = ['#5b52f6', '#a855f7', '#ec4899', '#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1']
-function getAvatarColor(username) {
-	if (!username) return avatarColors[0]
-	let hash = 0
-	for (let i = 0; i < username.length; i++) {
-		hash = username.charCodeAt(i) + ((hash << 5) - hash)
-	}
-	return avatarColors[Math.abs(hash) % avatarColors.length]
-}
+import { getUserColor as getAvatarColor, formatTime } from '../../composables/useUtils'
 
 function getAvatarLetter(username) {
 	return username ? username.charAt(0).toUpperCase() : '?'
@@ -250,12 +241,7 @@ function goMyComments() {
 	uni.navigateTo({ url: '/pages/profile/myCommentsList' })
 }
 
-function formatTime(seconds) {
-	if (!seconds || seconds < 0) return '0:00'
-	const m = Math.floor(seconds / 60)
-	const s = Math.floor(seconds % 60)
-	return `${m}:${s.toString().padStart(2, '0')}`
-}
+
 
 function formatDate(dateStr) {
 	if (!dateStr) return ''

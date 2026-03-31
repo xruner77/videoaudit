@@ -49,6 +49,7 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
+import { formatTime } from '../../composables/useUtils'
 
 const authStore = useAuthStore()
 const videoId = ref(0)
@@ -136,12 +137,7 @@ function goToVideo(id) {
 	uni.navigateTo({ url: `/pages/review/review?id=${id}` })
 }
 
-function formatTime(seconds) {
-	if (!seconds || seconds < 0) return '0:00'
-	const m = Math.floor(seconds / 60)
-	const s = Math.floor(seconds % 60)
-	return `${m}:${s.toString().padStart(2, '0')}`
-}
+
 
 function formatDate(dateStr) {
 	if (!dateStr) return ''

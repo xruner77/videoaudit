@@ -56,6 +56,7 @@ import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
+import { formatDuration, getVideoThumbUrl, formatDateSimple } from '../../composables/useUtils'
 
 const authStore = useAuthStore()
 
@@ -125,25 +126,7 @@ function goReview(id) {
 	uni.navigateTo({ url: `/pages/review/review?id=${id}` })
 }
 
-function formatDuration(seconds) {
-	if (!seconds || seconds < 0) return '0:00'
-	const m = Math.floor(seconds / 60)
-	const s = Math.floor(seconds % 60)
-	return `${m}:${s.toString().padStart(2, '0')}`
-}
 
-function getVideoThumbUrl(video) {
-	if (!video || !video.url) return ''
-	let url = video.type === 'local' ? `${authStore.API_BASE}${video.url}` : video.url
-	if (!url.includes('#t=')) url += '#t=0.5'
-	return url
-}
-
-function formatDateSimple(dateStr) {
-	if (!dateStr) return ''
-	const d = new Date(dateStr)
-	return `${d.getMonth() + 1}月${d.getDate()}日`
-}
 </script>
 
 <style scoped>

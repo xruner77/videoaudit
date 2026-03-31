@@ -12,9 +12,9 @@ use Slim\Routing\RouteCollectorProxy;
  * - 所有登录用户可上传 / 管理自己的视频
  * - 管理员可删除任何视频
  */
-return function (App $app, PDO $db) {
+return function (App $app, PDO $db, array $config) {
 
-    $jwtSecret = 'videoaudit_jwt_secret_key_2026';
+    $jwtSecret = $config['jwt_secret'];
     $uploadDir = __DIR__ . '/../../uploads';
 
     if (!is_dir($uploadDir)) {

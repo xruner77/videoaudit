@@ -110,13 +110,13 @@ if ((int)$stmt->fetchColumn() === 0) {
 
 // ---------- 注册路由 ----------
 $routes = require __DIR__ . '/../src/Routes/auth.php';
-$routes($app, $db);
+$routes($app, $db, $dbConfig);
 
 $routes = require __DIR__ . '/../src/Routes/videos.php';
-$routes($app, $db);
+$routes($app, $db, $dbConfig);
 
 $routes = require __DIR__ . '/../src/Routes/comments.php';
-$routes($app, $db);
+$routes($app, $db, $dbConfig);
 
 // ---------- 错误处理 ----------
 $app->addErrorMiddleware(true, true, true);

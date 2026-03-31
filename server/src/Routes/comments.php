@@ -14,9 +14,9 @@ use Slim\App;
  * - 上传评论图片 (需登录)
  * - 删除评论 (仅创建者或管理员)
  */
-return function (App $app, PDO $db) {
+return function (App $app, PDO $db, array $config) {
 
-    $jwtSecret = 'videoaudit_jwt_secret_key_2026';
+    $jwtSecret = $config['jwt_secret'];
     $uploadDir = __DIR__ . '/../../uploads/images';
 
     // GET /api/admin/comments - 获取所有评论 (管理员专用, 支持分页和搜索)
