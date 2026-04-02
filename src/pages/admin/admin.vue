@@ -215,36 +215,10 @@
 
 			<!-- ==================== 用户管理 ==================== -->
 			<view v-if="tab === 'users'">
-				<!-- 创建用户表单 -->
-				<view class="create-user-card">
-					<text class="section-title">创建新用户</text>
-					<view class="form-group">
-						<text class="form-label">用户名</text>
-						<input class="dark-input" v-model="newUsername" placeholder="2-20个字符" maxlength="20" />
-					</view>
-					<view class="form-group">
-						<text class="form-label">密码</text>
-						<input class="dark-input" v-model="newPassword" placeholder="至少6个字符" maxlength="32" />
-					</view>
-					<view class="form-group">
-						<text class="form-label">角色</text>
-						<view class="role-selector">
-							<view
-								:class="['role-option', newRole === 'user' && 'role-active']"
-								@click="newRole = 'user'"
-							>
-								审片员
-							</view>
-							<view
-								:class="['role-option', newRole === 'admin' && 'role-active']"
-								@click="newRole = 'admin'"
-							>
-								管理员
-							</view>
-						</view>
-					</view>
-					<button class="btn-primary create-user-btn" :loading="creatingUser" @click="createUser">
-						创建用户
+				<!-- 创建用户按钮 -->
+				<view class="create-user-trigger">
+					<button class="btn-primary create-user-trigger-btn" @click="showCreateUser = true">
+						<uni-icons type="plusempty" size="16" color="#fff" style="margin-right:8rpx;" />创建新用户
 					</button>
 				</view>
 
@@ -280,6 +254,34 @@
 				</view>
 				<view class="empty-state" v-if="userList.length === 0 && !loadingUsers">
 					<text>暂无用户</text>
+				</view>
+
+				<!-- 创建用户弹层 -->
+				<view class="modal-mask" v-if="showCreateUser" @click="showCreateUser = false">
+					<view class="modal-content" @click.stop>
+						<view class="modal-header">
+							<text class="modal-title">创建新用户</text>
+							<view class="modal-close" @click="showCreateUser = false">
+								<uni-icons type="closeempty" size="18" color="#999" />
+							</view>
+						</view>
+						<view class="form-group">
+							<text class="form-label">用户名</text>
+							<input class="dark-input" v-model="newUsername" placeholder="2-20个字符" maxlength="20" />
+						</view>
+						<view class="form-group">
+							<text class="form-label">密码</text>
+							<input class="dark-input" v-model="newPassword" placeholder="至少6个字符" maxlength="32" />
+						</view>
+						<view class="form-group">
+							<text class="form-label">角色</text>
+							<view class="role-selector">
+								<view :class="['role-option', newRole === 'user' && 'role-active']" @click="newRole = 'user'">审片员</view>
+								<view :class="['role-option', newRole === 'admin' && 'role-active']" @click="newRole = 'admin'">管理员</view>
+							</view>
+						</view>
+						<button class="btn-primary create-user-btn" :loading="creatingUser" @click="createUser">创建用户</button>
+					</view>
 				</view>
 
 				<!-- 重置密码弹层 -->
@@ -321,7 +323,7 @@ import VideoCard from '@/components/VideoCard.vue'
 import CommentCard from '@/components/CommentCard.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
-import { formatDateSimple } from '@/composables/useUtils'
+import { formatDateSimple, getUserColor } from '@/composables/useUtils'
 
 const authStore = useAuthStore()
 
@@ -383,6 +385,7 @@ const newUsername = ref('')
 const newPassword = ref('')
 const newRole = ref('user')
 const creatingUser = ref(false)
+const showCreateUser = ref(false)
 const showResetPassword = ref(false)
 const resetTargetId = ref(null)
 const resetTargetName = ref('')
@@ -615,6 +618,7 @@ async function createUser() {
 			newUsername.value = ''
 			newPassword.value = ''
 			newRole.value = 'user'
+			showCreateUser.value = false
 			fetchUsers()
 		} else {
 			throw new Error(res.data?.error || '创建失败')
@@ -1347,6 +1351,19 @@ async function resetPassword() {
 }
 
 /* 用户管理样式 */
+.create-user-trigger {
+	margin-bottom: 24rpx;
+	padding-top: 16rpx;
+}
+
+.create-user-trigger-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 80rpx;
+	font-size: 28rpx;
+}
+
 .create-user-card {
 	background: rgba(255, 255, 255, 0.03);
 	border: 1px solid rgba(255, 255, 255, 0.06);

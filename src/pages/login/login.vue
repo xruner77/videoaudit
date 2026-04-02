@@ -60,7 +60,8 @@ async function handleLogin() {
 		await authStore.login(username.value.trim(), password.value)
 		uni.showToast({ title: '登录成功', icon: 'success' })
 		setTimeout(() => {
-			uni.reLaunch({ url: '/pages/videoList/videoList' })
+			const target = authStore.isAdmin ? '/pages/admin/admin' : '/pages/videoList/videoList'
+			uni.reLaunch({ url: target })
 		}, 500)
 	} catch (e) {
 		uni.showToast({ title: e.message || '登录失败', icon: 'none' })

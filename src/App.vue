@@ -5,6 +5,10 @@ import { useAuthStore } from './stores/authStore'
 onLaunch(() => {
 	const authStore = useAuthStore()
 	authStore.init()
+	// 管理员直接进入后台管理页
+	if (authStore.isLoggedIn && authStore.isAdmin) {
+		uni.reLaunch({ url: '/pages/admin/admin' })
+	}
 })
 </script>
 
