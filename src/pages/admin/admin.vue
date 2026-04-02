@@ -79,25 +79,12 @@
 						<text>暂无视频</text>
 					</view>
 					<view class="recent-list-videos" v-else>
-						<view class="video-manage-card" v-for="v in recentVideos" :key="v.id" @click="goReview(v.id)">
-							<view class="vm-preview">
-								<video class="vm-preview-video" :src="getVideoThumbUrl(v)" :controls="false" :show-center-play-btn="false" :enable-progress-gesture="false" object-fit="cover" muted preload="metadata" playsinline webkit-playsinline x5-video-player-type="h5-page"></video>
-								<view class="vm-preview-overlay"></view>
-								<view class="vm-duration" v-if="v.duration"><text>{{ formatDuration(v.duration) }}</text></view>
-							</view>
-							<view class="vm-info">
-								<text class="vm-title">{{ v.title }}</text>
-								<view class="vm-meta-row">
-									<uni-icons type="person" size="12" color="#666" style="margin-right:4rpx;" />
-									<text>{{ v.uploader || '未知' }}</text>
-									<text class="vm-type-tag">{{ v.type === 'local' ? '本地' : '远程' }}</text>
-								</view>
-								<view class="vm-stats-row">
-									<view class="vm-stat"><uni-icons type="chat" size="12" color="#888" /><text>{{ v.comment_count || 0 }}</text></view>
-									<view class="vm-stat"><uni-icons type="eye" size="12" color="#888" /><text>{{ v.views || 0 }}</text></view>
-								</view>
-							</view>
-						</view>
+						<VideoCard
+							v-for="v in recentVideos"
+							:key="v.id"
+							:video="v"
+							@click="goReview(v.id)"
+						/>
 					</view>
 				</view>
 
@@ -111,25 +98,11 @@
 						<text>暂无评论</text>
 					</view>
 					<view class="recent-list" v-else>
-						<view class="recent-comment-item" v-for="c in recentComments" :key="c.id">
-							<view class="rc-header">
-								<view class="rc-avatar" :style="{ background: getUserColor(c.username) }">
-									{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}
-								</view>
-								<view class="rc-user-info">
-									<text class="rc-username">{{ c.username }}</text>
-									<text class="rc-date">{{ formatDateSimple(c.created_at) }}</text>
-								</view>
-							</view>
-							<text class="rc-content">{{ c.content }}</text>
-							<view class="rc-footer">
-								<view class="rc-video-tag">
-									<uni-icons type="videocam" size="12" color="#888" />
-									<text class="rc-video-name">{{ c.video_title || '未知视频' }}</text>
-								</view>
-								<text class="rc-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
-							</view>
-						</view>
+						<CommentCard
+							v-for="c in recentComments"
+							:key="c.id"
+							:comment="c"
+						/>
 					</view>
 				</view>
 			</view>
@@ -152,62 +125,14 @@
 					</view>
 				</view>
 
-				<view
-					class="admin-item-card"
+				<VideoCard
 					v-for="v in videoList"
 					:key="v.id"
-					:class="{ 'item-expanded': expandedId === v.id }"
-				>
-					<view class="admin-item-header" @click="toggleExpand(v.id)">
-						<view class="admin-video-icon">
-							<uni-icons type="videocam" size="20" color="#6c5ce7" />
-						</view>
-						<view class="admin-item-info">
-							<text class="admin-item-title">{{ v.title }}</text>
-							<view class="admin-item-meta">
-								<view class="meta-tag">
-									<uni-icons type="person" size="12" color="#666" style="margin-right:4rpx;"/>
-									<text>{{ v.uploader || '未知' }}</text>
-								</view>
-								<view class="meta-tag">
-									<uni-icons :type="v.type === 'local' ? 'folder-add' : 'paperplane'" size="12" color="#666" style="margin-right:4rpx;"/>
-									<text>{{ v.type === 'local' ? '本地' : '远程' }}</text>
-								</view>
-							</view>
-						</view>
-						<view class="admin-item-arrow">
-							<uni-icons :type="expandedId === v.id ? 'top' : 'bottom'" size="14" color="#555" />
-						</view>
-					</view>
-
-					<!-- 展开详情区域 -->
-					<view class="admin-item-details" v-if="expandedId === v.id">
-						<view class="details-grid">
-							<view class="details-stat">
-								<text class="stat-value">{{ formatDuration(v.duration) }}</text>
-								<text class="stat-label">时长</text>
-							</view>
-							<view class="details-stat">
-								<text class="stat-value">{{ v.views || 0 }}</text>
-								<text class="stat-label">播放量</text>
-							</view>
-							<view class="details-stat">
-								<text class="stat-value">{{ v.comment_count || 0 }}</text>
-								<text class="stat-label">评论数</text>
-							</view>
-						</view>
-						<view class="admin-item-actions">
-							<view class="action-link-group">
-								<text class="btn-link" @click.stop="goReview(v.id)">
-									<uni-icons type="eye" size="14" color="#6c5ce7" style="margin-right:8rpx;" />查看视频
-								</text>
-								<text class="btn-link danger" @click.stop="deleteVideo(v.id)">
-									<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:8rpx;" />删除视频
-								</text>
-							</view>
-						</view>
-					</view>
-				</view>
+					:video="v"
+					:showDelete="true"
+					@click="goReview(v.id)"
+					@delete="deleteVideo(v.id)"
+				/>
 				<view class="load-more-status" v-if="videoList.length > 0">
 					<text v-if="loadingVideos">正在加载...</text>
 					<text v-else-if="hasMoreVideos" @click="loadNextVideos">加载更多视频</text>
@@ -266,26 +191,13 @@
 					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
 
-				<view class="recent-comment-item" v-for="c in commentList" :key="c.id" style="position: relative;">
-					<view class="rc-header">
-						<view class="rc-avatar" :style="{ background: getUserColor(c.username) }">{{ c.username ? c.username.charAt(0).toUpperCase() : '?' }}</view>
-						<view class="rc-user-info">
-							<text class="rc-username">{{ c.username }}</text>
-							<text class="rc-date">{{ formatDateSimple(c.created_at) }}</text>
-						</view>
-						<view class="rc-delete-btn" @click="deleteComment(c.id)">
-							<uni-icons type="trash" size="16" color="#e74c3c" />
-						</view>
-					</view>
-					<text class="rc-content">{{ c.content }}</text>
-					<view class="rc-footer">
-						<view class="rc-video-tag">
-							<uni-icons type="videocam" size="12" color="#888" />
-							<text class="rc-video-name">{{ c.video_title || '未知视频' }}</text>
-						</view>
-						<text class="rc-timestamp">🎬 {{ formatTime(c.timestamp) }}</text>
-					</view>
-				</view>
+				<CommentCard
+					v-for="c in commentList"
+					:key="c.id"
+					:comment="c"
+					:showDelete="true"
+					@delete="deleteComment(c.id)"
+				/>
 
 				<view class="load-more-status" v-if="commentList.length > 0">
 					<text v-if="loadingComments">正在加载...</text>
@@ -405,16 +317,17 @@
 import { ref, computed } from 'vue'
 import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '@/components/Header.vue'
+import VideoCard from '@/components/VideoCard.vue'
+import CommentCard from '@/components/CommentCard.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
-import { formatDateSimple, formatDuration, formatTime, getUserColor } from '@/composables/useUtils'
+import { formatDateSimple } from '@/composables/useUtils'
 
 const authStore = useAuthStore()
 
 const tab = ref('dashboard')
 const videoOptions = ref([])
 const selectedVideoId = ref(null)
-const expandedId = ref(null)
 
 // ==================== Dashboard ====================
 const dashStats = ref({ videos: 0, comments: 0, users: 0 })
@@ -582,43 +495,19 @@ function refreshVideos() {
 	loadNextVideos()
 }
 
-function onSearchVideos() {
-	refreshVideos()
-}
+function onSearchVideos() { refreshVideos() }
 
-function refreshComments() {
-	resetComments()
-	loadNextComments()
-}
+function refreshComments() { resetComments(); loadNextComments() }
 
-function handleClearVideoQuery() {
-	videoQuery.value = ''
-	refreshVideos()
-}
+function handleClearVideoQuery() { videoQuery.value = ''; refreshVideos() }
 
 function selectVideoFilter(video) {
-	if (!video) {
-		selectedVideoId.value = null
-		videoSearchQuery.value = ''
-	} else {
-		selectedVideoId.value = video.id
-		videoSearchQuery.value = video.title
-	}
-	showSearchResult.value = false
-	refreshComments()
+	if (!video) { selectedVideoId.value = null; videoSearchQuery.value = '' }
+	else { selectedVideoId.value = video.id; videoSearchQuery.value = video.title }
+	showSearchResult.value = false; refreshComments()
 }
 
-function handleClearVideoFilter() {
-	videoSearchQuery.value = ''
-	selectedVideoId.value = null
-	refreshComments()
-}
-
-function toggleExpand(id) {
-	expandedId.value = expandedId.value === id ? null : id
-}
-
-
+function handleClearVideoFilter() { videoSearchQuery.value = ''; selectedVideoId.value = null; refreshComments() }
 
 async function deleteVideo(id) {
 	uni.showModal({
@@ -1052,89 +941,7 @@ async function resetPassword() {
 	color: #888;
 }
 
-/* 最近评论 */
-.recent-comment-item {
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.06);
-	border-radius: 16rpx;
-	padding: 22rpx 24rpx;
-	margin-bottom: 16rpx;
-}
-
-.rc-header {
-	display: flex;
-	align-items: center;
-	margin-bottom: 14rpx;
-}
-
-.rc-avatar {
-	width: 40rpx;
-	height: 40rpx;
-	border-radius: 50%;
-	color: #fff;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 20rpx;
-	font-weight: bold;
-	margin-right: 12rpx;
-	flex-shrink: 0;
-}
-
-.rc-user-info {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	gap: 12rpx;
-}
-
-.rc-username {
-	font-size: 24rpx;
-	color: #e0e0e0;
-	font-weight: 500;
-}
-
-.rc-date {
-	font-size: 20rpx;
-	color: #555;
-}
-
-.rc-content {
-	font-size: 26rpx;
-	color: #dcdce6;
-	line-height: 1.5;
-	display: block;
-	margin-bottom: 12rpx;
-}
-
-.rc-footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.rc-video-tag {
-	display: flex;
-	align-items: center;
-	gap: 6rpx;
-}
-
-.rc-video-name {
-	font-size: 20rpx;
-	color: #666;
-	max-width: 240rpx;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.rc-timestamp {
-	font-size: 20rpx;
-	color: #f39c12;
-}
-
-.rc-delete-btn { display: flex; align-items: center; justify-content: center; padding: 10rpx; margin: -10rpx; margin-left: auto; transition: opacity 0.2s; }
-.rc-delete-btn:active { opacity: 0.6; }
+/* 最近评论、评论管理 - 样式已移至 CommentCard.vue */
 
 .empty-hint {
 	text-align: center;

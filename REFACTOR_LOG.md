@@ -69,34 +69,40 @@
 
 ## 三、未完成的工作
 
-### 🔲 P3 — 删除 videoList.vue 管理员分支 [HIGH]
+### ✅ P3 — 删除 videoList.vue 管理员分支 [HIGH → 已完成]
 
-**当前问题**：[videoList.vue](file:///d:/tfx/myapp/videoaudit/src/pages/videoList/videoList.vue) (742 行) 通过 `v-if="authStore.isAdmin"` 包含了完整的管理员后台（Dashboard + 视频/评论/用户管理），与 [admin.vue](file:///d:/tfx/myapp/videoaudit/src/pages/admin/admin.vue) (1701 行) 功能完全重复。
+**已确认**：路由 `pages/admin/admin` 是唯一管理员入口，`videoList.vue` 仅需普通用户视频列表。
 
-**待做**：
-1. 确认路由配置中管理员入口确实是 `admin.vue`
-2. 删除 `videoList.vue` 中所有 `v-if="authStore.isAdmin"` 的 HTML 分支
-3. 删除对应的管理员专用 JS 逻辑（`fetchDashboard`, `switchAdminTab`, 管理员分页等）
-4. 删除管理员专用 CSS
-5. 预计可减少 **400+ 行**代码
+**执行结果**：
 
-**风险**：需确保普通用户的首页视频列表不受影响。
+| 操作 | 说明 |
+|------|------|
+| 删除 template | 移除 `v-if="authStore.isAdmin"` 管理员视图块（第1~265行）|
+| 删除 script | 移除 `fetchDashboard`、`switchAdminTab`、视频/评论/用户管理全部函数 |
+| 删除 CSS | 移除所有管理员专用样式（admin-container、tab-*、vm-*、rc-*等）|
+| **行数变化** | **742行 → 约110行**（减少 ~630行）|
+
+> [!NOTE]
+> 普通用户的视频列表、搜索、滚动加载、上传悬浮按钮等功能完全保留，不受影响。
 
 ---
 
-### 🔲 P4 — 提取 VideoCard + CommentCard 组件 [HIGH]
+### ✅ P4 — 提取 VideoCard + CommentCard 组件 [HIGH → 已完成]
 
-**当前问题**：视频卡片模板（`.video-manage-card`）在 3 个文件中重复，评论卡片（`.recent-comment-item`）也在 3 个文件中重复。
+**执行结果**：创建两个通用组件，替换 4 个文件中的重复模板和 CSS。
 
-**待做**：
-1. 创建 `src/components/VideoCard.vue` — 统一视频卡片（缩略图、标题、上传者、时长、评论数、播放量）
-2. 创建 `src/components/CommentCard.vue` — 统一评论卡片（用户头像、评论内容、时间戳、时间）
-3. 在 `admin.vue`、`videoList.vue`、`myVideos.vue`、`myCommentsList.vue` 中替换为组件引用
-4. 清理各文件中重复的 CSS
+| 新增组件 | Props | 替换位置 |
+|---------|-------|--------|
+| [VideoCard.vue](file:///d:/tfx/myapp/videoaudit/src/components/VideoCard.vue) | `video`, `showDelete`, `showUploader`, `showDate` | admin.vue(dashboard+视频管理), myVideos.vue |
+| [CommentCard.vue](file:///d:/tfx/myapp/videoaudit/src/components/CommentCard.vue) | `comment`, `showDelete`, `clickable` | admin.vue(dashboard+评论管理), myCommentsList.vue |
 
-**注意**：
-- 各页面的卡片功能略有差异（admin 有删除按钮，普通用户没有），需通过 props/slots 处理
-- 工作量约 1-3 天
+**消除的重复**：
+- 视频卡片模板（`video-manage-card`）：原 3 处重复 → 统一为 1 个组件
+- 评论卡片模板（`recent-comment-item`）：原 3 处重复 → 统一为 1 个组件
+- 相关 CSS（vm-*、rc-* 等）各文件独立维护 → 集中在组件内
+
+> [!NOTE]
+> 各页面差异通过 props 控制：admin 带删除按钮（`showDelete=true`），myCommentsList 支持点击跳转（`clickable=true`），myVideos 不显示上传者（`showUploader=false`）。
 
 ---
 
