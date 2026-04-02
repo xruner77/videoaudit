@@ -86,6 +86,7 @@ function clearSearch() { searchQuery.value = ''; onSearch() }
 
 onLoad(() => {
 	if (!authStore.isLoggedIn) { uni.reLaunch({ url: '/pages/login/login' }); return }
+	if (authStore.isAdmin) { uni.reLaunch({ url: '/pages/admin/admin' }); return }
 	onSearch()
 })
 onShow(() => {

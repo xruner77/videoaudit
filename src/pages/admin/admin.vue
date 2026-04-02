@@ -1,6 +1,6 @@
 <template>
 	<view class="page-container">
-		<Header title="管理后台" showBack />
+		<Header title="管理后台" />
 
 		<view class="admin-container" v-if="authStore.isAdmin">
 			<!-- 管理 Tab -->
