@@ -78,14 +78,13 @@
 					<view v-if="recentVideos.length === 0" class="empty-hint">
 						<text>暂无视频</text>
 					</view>
-					<view class="recent-list-videos" v-else>
-						<VideoCard
-							v-for="v in recentVideos"
-							:key="v.id"
-							:video="v"
-							@click="goReview(v.id)"
-						/>
-					</view>
+					<VideoCard
+						v-else
+						v-for="v in recentVideos"
+						:key="v.id"
+						:video="v"
+						@click="goReview(v.id)"
+					/>
 				</view>
 
 				<!-- 最近评论 -->
@@ -97,15 +96,14 @@
 					<view v-if="recentComments.length === 0" class="empty-hint">
 						<text>暂无评论</text>
 					</view>
-					<view class="recent-list" v-else>
-						<CommentCard
-							v-for="c in recentComments"
-							:key="c.id"
-							:comment="c"
-							:clickable="true"
-							@click="goReview(c.video_id)"
-						/>
-					</view>
+					<CommentCard
+						v-else
+						v-for="c in recentComments"
+						:key="c.id"
+						:comment="c"
+						:clickable="true"
+						@click="goReview(c.video_id)"
+					/>
 				</view>
 			</view>
 
