@@ -102,6 +102,8 @@
 							v-for="c in recentComments"
 							:key="c.id"
 							:comment="c"
+							:clickable="true"
+							@click="goReview(c.video_id)"
 						/>
 					</view>
 				</view>
@@ -196,6 +198,8 @@
 					:key="c.id"
 					:comment="c"
 					:showDelete="true"
+					:clickable="true"
+					@click="goReview(c.video_id)"
 					@delete="deleteComment(c.id)"
 				/>
 
@@ -218,9 +222,9 @@
 				<!-- 用户列表 -->
 				<view class="user-list-header">
 					<text class="section-title">用户列表 ({{ userList.length }})</text>
-					<button class="btn-primary create-user-inline-btn" @click="showCreateUser = true">
-						<uni-icons type="plusempty" size="14" color="#fff" style="margin-right:6rpx;" />新建
-					</button>
+					<view class="create-user-inline-btn" @click="showCreateUser = true">
+						<uni-icons type="plusempty" size="14" color="#fff" style="margin-right:4rpx;" />新建
+					</view>
 				</view>
 				<view class="admin-item-card" v-for="u in userList" :key="u.id">
 					<view class="admin-item-header">
@@ -1358,11 +1362,15 @@ async function resetPassword() {
 .create-user-inline-btn {
 	display: flex;
 	align-items: center;
-	padding: 10rpx 24rpx;
+	padding: 8rpx 24rpx;
 	font-size: 24rpx;
-	height: auto;
-	line-height: 1.4;
-	border-radius: 10rpx;
+	background: linear-gradient(135deg, #6c5ce7, #a855f7);
+	color: #fff;
+	border-radius: 30rpx;
+	margin: 0;
+}
+.create-user-inline-btn:active {
+	opacity: 0.8;
 }
 
 .create-user-card {
