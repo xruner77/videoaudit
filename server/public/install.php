@@ -52,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
             // 生成配置文件内容
+            $currentHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $configContent = "<?php\nreturn [\n"
                 . "    'host'     => " . var_export($host, true) . ",\n"
                 . "    'port'     => $port,\n"
@@ -62,8 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 . "    'jwt_secret' => " . var_export($jwtSecret, true) . ",\n"
                 . "    'debug'      => false,\n"
                 . "    'allowed_origins' => [\n"
-                . "        'https://' . (\$_SERVER['HTTP_HOST'] ?? 'localhost'),\n"
-                . "        'http://' . (\$_SERVER['HTTP_HOST'] ?? 'localhost'),\n"
+                . "        'https://$currentHost',\n"
+                . "        'http://$currentHost',\n"
                 . "        'http://localhost:5173',\n"
                 . "        'http://127.0.0.1:5173',\n"
                 . "    ],\n"
@@ -78,63 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = '⚠️ 无法自动写入配置文件（权限不足）。请手动将以下内容保存为 <code>server/db_config.php</code>：';
             } else {
                 // ==================== 初始化数据库 ====================
-
-                // 1. 创建用户表
-                $db->exec("
-                    CREATE TABLE IF NOT EXISTS users (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        username VARCHAR(50) UNIQUE NOT NULL,
-                        password VARCHAR(255) NOT NULL,
-                        role VARCHAR(20) DEFAULT 'user',
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-                ");
-
-                // 2. 创建视频表
-                $db->exec("
-                    CREATE TABLE IF NOT EXISTS videos (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        title VARCHAR(255) NOT NULL,
-                        url TEXT NOT NULL,
-                        type VARCHAR(20) DEFAULT 'local',
-                        user_id INT NOT NULL,
-                        views INT DEFAULT 0,
-                        duration INT DEFAULT 0,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-                ");
-
-                // 3. 创建评论表
-                $db->exec("
-                    CREATE TABLE IF NOT EXISTS comments (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        video_id INT NOT NULL,
-                        user_id INT NOT NULL,
-                        content TEXT,
-                        `timestamp` DOUBLE NOT NULL,
-                        image_url TEXT DEFAULT NULL,
-                        parent_id INT DEFAULT NULL,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
-                        FOREIGN KEY (user_id) REFERENCES users(id)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-                ");
-
-                // 4. 创建上传目录
-                $uploadDir = __DIR__ . '/../uploads';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-                $imageDir = $uploadDir . '/images';
-                if (!is_dir($imageDir)) mkdir($imageDir, 0755, true);
-
-                // 5. 创建管理员账号
-                $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-                $stmt->execute([$adminUser]);
-                if ((int)$stmt->fetchColumn() === 0) {
-                    $hash = password_hash($adminPass, PASSWORD_DEFAULT);
-                    $db->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'admin')")
-                       ->execute([$adminUser, $hash]);
-                }
+                require_once __DIR__ . '/../src/schema.php';
+                initSchema($db);
+                ensureUploadDirs(__DIR__ . '/../uploads');
+                createAdminUser($db, $adminUser, $adminPass);
 
                 $success = true;
             }
