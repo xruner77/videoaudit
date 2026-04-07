@@ -478,6 +478,7 @@ onReachBottom(() => {
 
 function switchTab(newTab) {
 	tab.value = newTab
+	showVideoPicker.value = false // 切换 tab 时关闭弹层
 	if (newTab === 'dashboard') {
 		fetchDashboard()
 	} else if (newTab === 'videos') {
