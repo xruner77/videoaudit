@@ -191,6 +191,23 @@
 					<view class="search-mask" v-if="showSearchResult" @click="showSearchResult = false"></view>
 				</view>
 
+				<!-- 关键字搜索 -->
+				<view class="filter-section keyword-filter">
+					<view class="search-box-wrapper">
+						<uni-icons type="search" size="18" color="#888" class="search-icon" />
+						<input
+							class="search-input"
+							v-model="commentSearchQuery"
+							placeholder="搜索评论内容..."
+							confirm-type="search"
+							@confirm="onSearchComments"
+						/>
+						<view class="clear-btn" v-if="commentSearchQuery" @click="handleClearCommentQuery">
+							<uni-icons type="closeempty" size="14" color="#888" />
+						</view>
+					</view>
+				</view>
+
 				<CommentCard
 					v-for="c in commentList"
 					:key="c.id"
@@ -505,6 +522,9 @@ function selectVideoFilter(video) {
 }
 
 function handleClearVideoFilter() { videoSearchQuery.value = ''; selectedVideoId.value = null; refreshComments() }
+
+function onSearchComments() { refreshComments() }
+function handleClearCommentQuery() { commentSearchQuery.value = ''; refreshComments() }
 
 async function deleteVideo(id) {
 	uni.showModal({
@@ -961,6 +981,16 @@ async function resetPassword() {
 	margin-right: -30rpx;
 	padding-left: 30rpx;
 	padding-right: 30rpx;
+}
+
+.keyword-filter {
+	position: static;
+	z-index: auto;
+	margin-top: -14rpx;
+	margin-bottom: 24rpx;
+	padding-top: 0;
+	padding-bottom: 0;
+	background: transparent;
 }
 
 .search-box-wrapper {
