@@ -149,67 +149,59 @@
 			<!-- ==================== 评论管理 ==================== -->
 			<view v-if="tab === 'comments'">
 				<view class="filter-section">
-					<view class="comment-filter-row">
-						<!-- 关键字搜索 -->
-						<view class="search-box-wrapper comment-search-box">
-							<uni-icons type="search" size="18" color="#888" class="search-icon" />
-							<input
-								class="search-input"
-								v-model="commentSearchQuery"
-								placeholder="搜索评论内容..."
-								confirm-type="search"
-								@confirm="onSearchComments"
-							/>
-							<view class="clear-btn" v-if="commentSearchQuery" @click="handleClearCommentQuery">
-								<uni-icons type="closeempty" size="14" color="#888" />
+					<view class="search-box-wrapper">
+						<uni-icons type="search" size="18" color="#888" class="search-icon" />
+						<input
+							class="search-input"
+							v-model="commentSearchQuery"
+							placeholder="搜索评论内容..."
+							confirm-type="search"
+							@confirm="onSearchComments"
+						/>
+						<!-- 清除搜索关键字 -->
+						<view class="clear-btn" v-if="commentSearchQuery" @click="handleClearCommentQuery" style="margin-right: 8rpx;">
+							<uni-icons type="closeempty" size="14" color="#888" />
+						</view>
+						<!-- 分隔线 -->
+						<view class="filter-divider"></view>
+						<!-- 筛选按钮/已选标签 -->
+						<view v-if="selectedVideoId" class="inline-video-tag" @click.stop>
+							<text class="inline-tag-text">{{ shortVideoName }}</text>
+							<view class="inline-tag-close" @click="clearVideoTag">
+								<uni-icons type="closeempty" size="10" color="#fff" />
 							</view>
 						</view>
-						<!-- 视频筛选标签 -->
-						<view class="video-filter-tag" :class="{ 'tag-active': selectedVideoId }" @click="showVideoPicker = true">
-							<template v-if="selectedVideoId">
-								<text class="tag-text">{{ shortVideoName }}</text>
-								<view class="tag-close" @click.stop="clearVideoTag">
-									<uni-icons type="closeempty" size="10" color="#fff" />
-								</view>
-							</template>
-							<template v-else>
-								<uni-icons type="videocam" size="14" color="#a0a0b8" style="margin-right:4rpx;" />
-								<text class="tag-text-default">筛选</text>
-							</template>
+						<view v-else class="inline-filter-btn" @click.stop="showVideoPicker = !showVideoPicker">
+							<uni-icons type="list" size="18" color="#a0a0b8" />
 						</view>
 					</view>
-				</view>
 
-				<!-- 视频选择底部弹层 -->
-				<view class="popup-mask" v-if="showVideoPicker" @click="showVideoPicker = false">
-					<view class="popup-content video-picker-popup" @click.stop>
-						<view class="popup-header">
-							<text class="popup-title">选择视频</text>
-							<uni-icons type="closeempty" size="20" color="#888" @click="showVideoPicker = false" />
+					<!-- 视频下拉列表（紧贴搜索栏下方） -->
+					<view class="video-dropdown" v-if="showVideoPicker">
+						<view class="dropdown-search">
+							<uni-icons type="search" size="14" color="#666" style="margin-right: 10rpx;" />
+							<input class="dropdown-search-input" v-model="videoSearchQuery" placeholder="搜索视频..." />
 						</view>
-						<view class="picker-search">
-							<uni-icons type="search" size="16" color="#888" style="margin-right:12rpx;" />
-							<input class="picker-search-input" v-model="videoSearchQuery" placeholder="搜索视频标题..." />
-						</view>
-						<scroll-view scroll-y class="picker-list">
-							<view class="picker-item" :class="{ 'picker-active': !selectedVideoId }" @click="selectVideoFilter(null)">
+						<scroll-view scroll-y class="dropdown-list">
+							<view class="dropdown-item" :class="{ 'dropdown-active': !selectedVideoId }" @click="selectVideoFilter(null)">
 								<text>全部视频</text>
 							</view>
 							<view
-								class="picker-item"
+								class="dropdown-item"
 								v-for="v in filteredVideoOptions"
 								:key="v.id"
-								:class="{ 'picker-active': selectedVideoId === v.id }"
+								:class="{ 'dropdown-active': selectedVideoId === v.id }"
 								@click="selectVideoFilter(v)"
 							>
-								<view class="picker-item-info">
-									<text class="picker-item-title">{{ v.title }}</text>
-									<text class="picker-item-meta">{{ v.uploader || '系统' }} · {{ v.comment_count || 0 }}条评论</text>
+								<view class="dropdown-item-info">
+									<text class="dropdown-item-title">{{ v.title }}</text>
+									<text class="dropdown-item-meta">{{ v.uploader || '系统' }} · {{ v.comment_count || 0 }}条</text>
 								</view>
-								<uni-icons v-if="selectedVideoId === v.id" type="checkmarkempty" size="16" color="#6c5ce7" />
+								<uni-icons v-if="selectedVideoId === v.id" type="checkmarkempty" size="14" color="#6c5ce7" />
 							</view>
 						</scroll-view>
 					</view>
+					<view class="search-mask" v-if="showVideoPicker" @click="showVideoPicker = false"></view>
 				</view>
 
 				<CommentCard
@@ -997,153 +989,122 @@ async function resetPassword() {
 	padding-right: 30rpx;
 }
 
-.comment-filter-row {
-	display: flex;
-	align-items: center;
-	gap: 16rpx;
-}
-
-.comment-search-box {
-	flex: 1;
-	min-width: 0;
-}
-
-.video-filter-tag {
-	display: flex;
-	align-items: center;
-	height: 80rpx;
-	padding: 0 20rpx;
-	border-radius: 12rpx;
-	background: rgba(255, 255, 255, 0.04);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	white-space: nowrap;
+/* 搜索栏内嵌筛选 */
+.filter-divider {
+	width: 1px;
+	height: 32rpx;
+	background: rgba(255, 255, 255, 0.12);
+	margin: 0 12rpx;
 	flex-shrink: 0;
-	max-width: 220rpx;
-	cursor: pointer;
-	transition: all 0.2s;
 }
 
-.video-filter-tag:active {
+.inline-filter-btn {
+	flex-shrink: 0;
+	padding: 8rpx;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	border-radius: 8rpx;
+	transition: background 0.15s;
+}
+
+.inline-filter-btn:active {
 	background: rgba(255, 255, 255, 0.08);
 }
 
-.video-filter-tag.tag-active {
+.inline-video-tag {
+	display: flex;
+	align-items: center;
 	background: rgba(108, 92, 231, 0.2);
-	border-color: rgba(108, 92, 231, 0.4);
+	border-radius: 8rpx;
+	padding: 6rpx 10rpx 6rpx 16rpx;
+	flex-shrink: 0;
+	max-width: 200rpx;
+	gap: 6rpx;
 }
 
-.tag-text-default {
-	font-size: 24rpx;
-	color: #a0a0b8;
-}
-
-.tag-text {
+.inline-tag-text {
 	font-size: 22rpx;
 	color: #c0b8ff;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	max-width: 140rpx;
 }
 
-.tag-close {
-	margin-left: 8rpx;
-	width: 28rpx;
-	height: 28rpx;
+.inline-tag-close {
+	width: 26rpx;
+	height: 26rpx;
 	border-radius: 50%;
 	background: rgba(255, 255, 255, 0.15);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
+	cursor: pointer;
 }
 
-/* 底部弹层 */
-.popup-mask {
-	position: fixed;
-	top: 0;
+.inline-tag-close:active {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+/* 视频下拉列表 */
+.video-dropdown {
+	position: absolute;
+	top: 86rpx;
 	left: 0;
 	right: 0;
-	bottom: 0;
-	background: rgba(0, 0, 0, 0.6);
-	z-index: 999;
-	display: flex;
-	align-items: flex-end;
-	justify-content: center;
-}
-
-.video-picker-popup {
-	width: 100%;
-	max-height: 70vh;
 	background: #1e1e34;
-	border-radius: 28rpx 28rpx 0 0;
-	padding: 0 30rpx 30rpx;
-	display: flex;
-	flex-direction: column;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 0 0 16rpx 16rpx;
+	z-index: 200;
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.4);
+	overflow: hidden;
 }
 
-.popup-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 30rpx 0 20rpx;
-}
-
-.popup-title {
-	font-size: 30rpx;
-	color: #e0e0e0;
-	font-weight: 600;
-}
-
-.picker-search {
+.dropdown-search {
 	display: flex;
 	align-items: center;
-	background: rgba(255, 255, 255, 0.05);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 12rpx;
-	padding: 0 20rpx;
-	height: 72rpx;
-	margin-bottom: 20rpx;
+	padding: 16rpx 20rpx;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.picker-search-input {
+.dropdown-search-input {
 	flex: 1;
-	font-size: 26rpx;
-	color: #fff;
+	font-size: 24rpx;
+	color: #ddd;
 }
 
-.picker-list {
-	flex: 1;
-	max-height: 50vh;
+.dropdown-list {
+	max-height: 480rpx;
 }
 
-.picker-item {
+.dropdown-item {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 24rpx 16rpx;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+	padding: 22rpx 20rpx;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 	color: #ccc;
 	font-size: 26rpx;
 }
 
-.picker-item:active {
+.dropdown-item:active {
 	background: rgba(255, 255, 255, 0.04);
 }
 
-.picker-active {
+.dropdown-active {
 	color: #6c5ce7;
 	background: rgba(108, 92, 231, 0.06);
 }
 
-.picker-item-info {
+.dropdown-item-info {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
 	flex: 1;
 }
 
-.picker-item-title {
+.dropdown-item-title {
 	font-size: 26rpx;
 	color: #e0e0e0;
 	overflow: hidden;
@@ -1151,11 +1112,11 @@ async function resetPassword() {
 	white-space: nowrap;
 }
 
-.picker-active .picker-item-title {
+.dropdown-active .dropdown-item-title {
 	color: #6c5ce7;
 }
 
-.picker-item-meta {
+.dropdown-item-meta {
 	font-size: 22rpx;
 	color: #666;
 	margin-top: 4rpx;
@@ -1247,7 +1208,7 @@ async function resetPassword() {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	z-index: 99;
+	z-index: 100;
 }
 
 .admin-item-card {
