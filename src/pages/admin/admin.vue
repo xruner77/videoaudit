@@ -215,16 +215,12 @@
 
 			<!-- ==================== 用户管理 ==================== -->
 			<view v-if="tab === 'users'">
-				<!-- 创建用户按钮 -->
-				<view class="create-user-trigger">
-					<button class="btn-primary create-user-trigger-btn" @click="showCreateUser = true">
-						<uni-icons type="plusempty" size="16" color="#fff" style="margin-right:8rpx;" />创建新用户
-					</button>
-				</view>
-
 				<!-- 用户列表 -->
 				<view class="user-list-header">
 					<text class="section-title">用户列表 ({{ userList.length }})</text>
+					<button class="btn-primary create-user-inline-btn" @click="showCreateUser = true">
+						<uni-icons type="plusempty" size="14" color="#fff" style="margin-right:6rpx;" />新建
+					</button>
 				</view>
 				<view class="admin-item-card" v-for="u in userList" :key="u.id">
 					<view class="admin-item-header">
@@ -1352,17 +1348,21 @@ async function resetPassword() {
 }
 
 /* 用户管理样式 */
-.create-user-trigger {
-	margin-bottom: 24rpx;
-	padding-top: 16rpx;
+.user-list-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20rpx;
 }
 
-.create-user-trigger-btn {
+.create-user-inline-btn {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	height: 80rpx;
-	font-size: 28rpx;
+	padding: 10rpx 24rpx;
+	font-size: 24rpx;
+	height: auto;
+	line-height: 1.4;
+	border-radius: 10rpx;
 }
 
 .create-user-card {
