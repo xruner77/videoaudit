@@ -40,7 +40,7 @@
 			<view v-if="tab === 'dashboard'" class="dashboard-section">
 				<!-- 统计卡片 -->
 				<view class="stats-row">
-					<view class="stat-card stat-purple">
+					<view class="stat-card stat-purple" @click="switchTab('videos')">
 						<view class="stat-icon-wrap">
 							<uni-icons type="videocam" size="22" color="#fff" />
 						</view>
@@ -49,7 +49,7 @@
 							<text class="stat-label">视频总数</text>
 						</view>
 					</view>
-					<view class="stat-card stat-blue">
+					<view class="stat-card stat-blue" @click="switchTab('comments')">
 						<view class="stat-icon-wrap">
 							<uni-icons type="chat" size="22" color="#fff" />
 						</view>
@@ -58,7 +58,7 @@
 							<text class="stat-label">评论总数</text>
 						</view>
 					</view>
-					<view class="stat-card stat-green">
+					<view class="stat-card stat-green" @click="switchTab('users')">
 						<view class="stat-icon-wrap">
 							<uni-icons type="person" size="22" color="#fff" />
 						</view>
@@ -323,7 +323,7 @@ import VideoCard from '@/components/VideoCard.vue'
 import CommentCard from '@/components/CommentCard.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
-import { formatDateSimple, getUserColor } from '@/composables/useUtils'
+import { formatDateSimple, getUserColor, updateTabBarForRole } from '@/composables/useUtils'
 
 const authStore = useAuthStore()
 
@@ -446,6 +446,7 @@ const {
 
 onShow(() => {
 	if (!authStore.isAdmin) return
+	updateTabBarForRole(true)
 	fetchDashboard()
 	fetchVideoOptions()
 })
@@ -691,7 +692,7 @@ async function resetPassword() {
 <style scoped>
 
 .admin-container {
-	padding: 0 30rpx 40rpx;
+	padding: 0 30rpx 140rpx;
 }
 
 /* ==================== Tabs ==================== */

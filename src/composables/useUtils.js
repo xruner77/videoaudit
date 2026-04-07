@@ -59,3 +59,31 @@ export function getVideoThumbUrl(video) {
 	if (!url.includes('#t=')) url += '#t=0.5'
 	return url
 }
+
+/**
+ * 根据用户角色隐藏/显示 tabBar 项（H5 DOM 操作）
+ * tabBar 顺序: 0=首页, 1=管理后台, 2=我的
+ * @param {boolean} isAdmin - 是否管理员
+ */
+export function updateTabBarForRole(isAdmin) {
+	// #ifdef H5
+	const apply = () => {
+		const items = document.querySelectorAll('.uni-tabbar__item')
+		if (!items || items.length < 3) return false
+		if (isAdmin) {
+			items[0].style.display = 'none'
+			items[1].style.display = ''
+			items[2].style.display = ''
+		} else {
+			items[0].style.display = ''
+			items[1].style.display = 'none'
+			items[2].style.display = ''
+		}
+		return true
+	}
+	// 尝试立即执行，如果 DOM 未就绪则延迟重试
+	if (!apply()) {
+		setTimeout(apply, 200)
+	}
+	// #endif
+}

@@ -43,6 +43,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useAuthStore } from '../../stores/authStore'
+import { updateTabBarForRole } from '../../composables/useUtils'
 
 const authStore = useAuthStore()
 const username = ref('')
@@ -61,7 +62,10 @@ async function handleLogin() {
 		uni.showToast({ title: '登录成功', icon: 'success' })
 		setTimeout(() => {
 			const target = authStore.isAdmin ? '/pages/admin/admin' : '/pages/videoList/videoList'
-			uni.reLaunch({ url: target })
+			uni.switchTab({
+				url: target,
+				success: () => updateTabBarForRole(authStore.isAdmin)
+			})
 		}, 500)
 	} catch (e) {
 		uni.showToast({ title: e.message || '登录失败', icon: 'none' })

@@ -27,8 +27,9 @@ function goBack() {
 	if (pages.length > 1) {
 		uni.navigateBack({ delta: 1 })
 	} else {
-		// 如果只有一页（例如直接打开的链接），默认返回首页
-		uni.switchTab({ url: '/pages/videoList/videoList' })
+		// 根据角色返回对应首页
+		const home = authStore.isAdmin ? '/pages/admin/admin' : '/pages/videoList/videoList'
+		uni.switchTab({ url: home })
 	}
 }
 </script>

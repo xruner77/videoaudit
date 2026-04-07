@@ -1,14 +1,21 @@
 <script setup>
 import { onLaunch } from '@dcloudio/uni-app'
 import { useAuthStore } from './stores/authStore'
+import { updateTabBarForRole } from './composables/useUtils'
 
 onLaunch(() => {
 	const authStore = useAuthStore()
 	authStore.init()
 	// 管理员直接进入后台管理页
 	if (authStore.isLoggedIn && authStore.isAdmin) {
-		uni.reLaunch({ url: '/pages/admin/admin' })
+		uni.switchTab({ url: '/pages/admin/admin' })
 	}
+	// 延迟设置 tabBar 可见性（等待 DOM 渲染完毕）
+	setTimeout(() => {
+		if (authStore.isLoggedIn) {
+			updateTabBarForRole(authStore.isAdmin)
+		}
+	}, 500)
 })
 </script>
 

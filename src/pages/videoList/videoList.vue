@@ -60,7 +60,7 @@ import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/authStore'
 import Header from '@/components/Header.vue'
 import { usePagination } from '@/composables/usePagination'
-import { formatDuration, getVideoThumbUrl } from '@/composables/useUtils'
+import { formatDuration, getVideoThumbUrl, updateTabBarForRole } from '@/composables/useUtils'
 
 const authStore = useAuthStore()
 
@@ -89,6 +89,10 @@ onLoad(() => {
 	onSearch()
 })
 onShow(() => {
+	// 普通用户：隐藏"管理后台" tab，显示"首页" tab
+	if (!authStore.isAdmin) {
+		updateTabBarForRole(false)
+	}
 	if (loaded.value) silentRefresh({ q: searchQuery.value })
 })
 onReachBottom(() => {

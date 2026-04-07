@@ -90,6 +90,17 @@
 				}
 			},
 			{
+				"pagePath": "pages/admin/admin",
+				"text": "管理后台",
+				"iconfont": {
+					"text": "\ue6a0",
+					"selectedText": "\ue6a0",
+					"fontSize": "22px",
+					"color": "#666",
+					"selectedColor": "#b8b8b8"
+				}
+			},
+			{
 				"pagePath": "pages/profile/profile",
 				"text": "我的",
 				"iconfont": {

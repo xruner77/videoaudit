@@ -82,7 +82,7 @@ import { ref, computed, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
-import { getUserColor as getAvatarColor, formatTime } from '../../composables/useUtils'
+import { getUserColor as getAvatarColor, formatTime, updateTabBarForRole } from '../../composables/useUtils'
 
 function getAvatarLetter(username) {
 	return username ? username.charAt(0).toUpperCase() : '?'
@@ -117,6 +117,7 @@ const groupedComments = computed(() => {
 
 onShow(() => {
 	if (authStore.isLoggedIn) {
+		updateTabBarForRole(authStore.isAdmin)
 		fetchMyComments()
 		fetchVideos()
 	}
