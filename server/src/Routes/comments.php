@@ -292,17 +292,44 @@ return function (App $app, PDO $db, array $config) {
             return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
         }
 
-        // 删除关联图片文件
-        if (!empty($comment['image_url'])) {
-            $filePath = $uploadDir . '/' . basename($comment['image_url']);
-            if (file_exists($filePath)) {
-                unlink($filePath);
+        // 收集所有需要删除的图片文件 (当前评论及其所有子评论)
+        $filesToDelete = [];
+        
+        // 查找子评论
+        $stmt = $db->prepare('SELECT image_url FROM comments WHERE id = ? OR parent_id = ?');
+        $stmt->execute([$commentId, $commentId]);
+        $relatedComments = $stmt->fetchAll();
+        
+        foreach ($relatedComments as $relComment) {
+            if (!empty($relComment['image_url'])) {
+                $urls = json_decode($relComment['image_url'], true);
+                if (!is_array($urls)) {
+                    $urls = [$relComment['image_url']];
+                }
+                foreach ($urls as $imgUrl) {
+                    $filesToDelete[] = $uploadDir . '/' . basename($imgUrl);
+                }
             }
         }
 
-        // 删除子评论
-        $db->prepare('DELETE FROM comments WHERE parent_id = ?')->execute([$commentId]);
-        $db->prepare('DELETE FROM comments WHERE id = ?')->execute([$commentId]);
+        // 删除子评论和当前评论 (事务保护)
+        $db->beginTransaction();
+        try {
+            $db->prepare('DELETE FROM comments WHERE parent_id = ?')->execute([$commentId]);
+            $db->prepare('DELETE FROM comments WHERE id = ?')->execute([$commentId]);
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollBack();
+            $response->getBody()->write(json_encode(['error' => '删除失败，请重试']));
+            return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+        }
+
+        // 数据库删除成功后，统一清理物理文件
+        foreach ($filesToDelete as $filePath) {
+            if (file_exists($filePath)) {
+                @unlink($filePath);
+            }
+        }
 
         $response->getBody()->write(json_encode(['message' => '删除成功']));
         return $response->withHeader('Content-Type', 'application/json');

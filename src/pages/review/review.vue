@@ -2,7 +2,13 @@
 	<view class="page">
 		<Header :title="videoTitle || '审片'" showBack />
 
-		<view class="review-container">
+		<!-- 初始加载状态 -->
+		<view v-if="pageLoading" class="page-loading">
+			<view class="spinner"></view>
+			<text class="loading-text">正在加载视频数据...</text>
+		</view>
+
+		<view v-else class="review-container">
 			<!-- 视频播放器区域 -->
 			<VideoPlayer
 				:videoUrl="videoUrl"
@@ -94,6 +100,7 @@ import { request } from '../../composables/useRequest'
 const authStore = useAuthStore()
 
 // --- 视频状态 ---
+const pageLoading = ref(true)
 const videoId = ref(0)
 const videoUrl = ref('')
 const videoTitle = ref('')
@@ -236,33 +243,33 @@ onUnmounted(() => {
 async function fetchVideoDetail() {
 	try {
 		const res = await request({
-			url: `${authStore.API_BASE}/api/videos`,
+			url: `${authStore.API_BASE}/api/videos/${videoId.value}`,
 			method: 'GET'
 		})
-		if (res.statusCode === 200) {
-			const video = (res.data.videos || []).find(v => v.id == videoId.value)
-			if (video) {
-				videoTitle.value = video.title
-				videoUploader.value = video.uploader || '未知'
-				
-				if (video.created_at) {
-					const d = new Date(video.created_at)
-					videoUploadDate.value = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
-				}
-				
-				videoViews.value = video.views || 0
-
-				const url = video.type === 'local'
-					? `${authStore.API_BASE}${video.url}`
-					: video.url
-				
-				videoUrl.value = url.includes('#t=') ? url : url + '#t=0.1'
-					
-				incrementViewCount(video.id)
+		if (res.statusCode === 200 && res.data.video) {
+			const video = res.data.video
+			videoTitle.value = video.title
+			videoUploader.value = video.uploader || '未知'
+			
+			if (video.created_at) {
+				const d = new Date(video.created_at)
+				videoUploadDate.value = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
 			}
+			
+			videoViews.value = video.views || 0
+
+			const url = video.type === 'local'
+				? `${authStore.API_BASE}${video.url}`
+				: video.url
+			
+			videoUrl.value = url.includes('#t=') ? url : url + '#t=0.1'
+				
+			incrementViewCount(video.id)
 		}
 	} catch (e) {
 		console.error('Failed to fetch video:', e)
+	} finally {
+		pageLoading.value = false
 	}
 }
 
@@ -474,6 +481,35 @@ function onCommentDeleted() {
 
 .review-container {
 	padding-bottom: 200rpx;
+}
+
+/* 全局加载提示 */
+.page-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 60vh;
+}
+
+.spinner {
+	width: 60rpx;
+	height: 60rpx;
+	border: 6rpx solid rgba(255, 255, 255, 0.1);
+	border-top-color: #a29bfe;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin-bottom: 20rpx;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+.loading-text {
+	color: #888;
+	font-size: 26rpx;
+	letter-spacing: 2rpx;
 }
 
 /* 视频元信息 */

@@ -226,20 +226,18 @@ return function (App $app, PDO $db, array $config) {
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
 
-        // 清理该用户的本地视频文件
+        // 清理该用户的本地视频文件 (记录待删除文件列表)
+        $filesToDelete = [];
         $stmt = $db->prepare('SELECT url, type FROM videos WHERE user_id = ?');
         $stmt->execute([$targetId]);
         $videos = $stmt->fetchAll();
         foreach ($videos as $video) {
             if ($video['type'] === 'local') {
-                $filePath = $uploadDir . '/' . basename($video['url']);
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
+                $filesToDelete[] = $uploadDir . '/' . basename($video['url']);
             }
         }
 
-        // 清理该用户评论中的图片文件
+        // 清理该用户评论中的图片文件 (记录待删除文件列表)
         $stmt = $db->prepare('SELECT image_url FROM comments WHERE user_id = ?');
         $stmt->execute([$targetId]);
         $comments = $stmt->fetchAll();
@@ -252,18 +250,30 @@ return function (App $app, PDO $db, array $config) {
                     $urls = [$comment['image_url']];
                 }
                 foreach ($urls as $imgUrl) {
-                    $filePath = $imageDir . '/' . basename($imgUrl);
-                    if (file_exists($filePath)) {
-                        @unlink($filePath);
-                    }
+                    $filesToDelete[] = $imageDir . '/' . basename($imgUrl);
                 }
             }
         }
 
-        // 级联删除：评论 → 视频 → 用户
-        $db->prepare('DELETE FROM comments WHERE user_id = ?')->execute([$targetId]);
-        $db->prepare('DELETE FROM videos WHERE user_id = ?')->execute([$targetId]);
-        $db->prepare('DELETE FROM users WHERE id = ?')->execute([$targetId]);
+        // 级联删除：评论 → 视频 → 用户 (事务保护)
+        $db->beginTransaction();
+        try {
+            $db->prepare('DELETE FROM comments WHERE user_id = ?')->execute([$targetId]);
+            $db->prepare('DELETE FROM videos WHERE user_id = ?')->execute([$targetId]);
+            $db->prepare('DELETE FROM users WHERE id = ?')->execute([$targetId]);
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollBack();
+            $response->getBody()->write(json_encode(['error' => '删除用户失败，请重试']));
+            return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+        }
+
+        // 数据库删除成功后，执行物理文件删除
+        foreach ($filesToDelete as $filePath) {
+            if (file_exists($filePath)) {
+                @unlink($filePath);
+            }
+        }
 
         $response->getBody()->write(json_encode(['message' => '用户已删除']));
         return $response->withHeader('Content-Type', 'application/json');

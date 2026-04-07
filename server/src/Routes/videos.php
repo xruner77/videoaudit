@@ -80,6 +80,7 @@ return function (App $app, PDO $db, array $config) {
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
+
     // POST /api/videos/{id}/view - 增加播放量
     $app->post('/api/videos/{id}/view', function (Request $request, Response $response, array $args) use ($db) {
         $videoId = (int) $args['id'];
@@ -96,6 +97,29 @@ return function (App $app, PDO $db, array $config) {
         $response->getBody()->write(json_encode(['videos' => $videos]));
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret, true));
+
+    // GET /api/videos/{id} - 获取单个视频详情 (必须放在 /all-names 之后，避免通配符拦截)
+    $app->get('/api/videos/{id}', function (Request $request, Response $response, array $args) use ($db) {
+        $videoId = (int) $args['id'];
+
+        $stmt = $db->prepare('
+            SELECT v.*, u.username as uploader,
+                   (SELECT COUNT(*) FROM comments c WHERE c.video_id = v.id) as comment_count
+            FROM videos v
+            LEFT JOIN users u ON v.user_id = u.id
+            WHERE v.id = ?
+        ');
+        $stmt->execute([$videoId]);
+        $video = $stmt->fetch();
+
+        if (!$video) {
+            $response->getBody()->write(json_encode(['error' => '视频不存在']));
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        }
+
+        $response->getBody()->write(json_encode(['video' => $video]));
+        return $response->withHeader('Content-Type', 'application/json');
+    })->add(new \App\Middleware\AuthMiddleware($jwtSecret));
 
     // 需要登录的视频路由组
     $app->group('/api/videos', function (RouteCollectorProxy $group) use ($db, $uploadDir) {
@@ -219,16 +243,45 @@ return function (App $app, PDO $db, array $config) {
                 return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
             }
 
-            // 如果是本地文件，删除物理文件
+            // 获取需要清理的物理文件 (视频文件 + 关联评论的图片文件)
+            $filesToDelete = [];
+            
+            // 1. 记录本地视频文件
             if ($video['type'] === 'local') {
-                $filePath = $uploadDir . '/' . basename($video['url']);
-                if (file_exists($filePath)) {
-                    unlink($filePath);
+                $filesToDelete[] = $uploadDir . '/' . basename($video['url']);
+            }
+            
+            // 2. 记录该视频下所有评论的关联图片文件
+            $stmt = $db->prepare('SELECT image_url FROM comments WHERE video_id = ? AND image_url IS NOT NULL');
+            $stmt->execute([$videoId]);
+            $comments = $stmt->fetchAll();
+            $imageDir = $uploadDir . '/images';
+            foreach ($comments as $comment) {
+                if (!empty($comment['image_url'])) {
+                    $urls = json_decode($comment['image_url'], true);
+                    if (!is_array($urls)) {
+                        $urls = [$comment['image_url']];
+                    }
+                    foreach ($urls as $imgUrl) {
+                        $filesToDelete[] = $imageDir . '/' . basename($imgUrl);
+                    }
                 }
             }
 
-            // 删除数据库记录 (级联删除关联评论)
-            $db->prepare('DELETE FROM videos WHERE id = ?')->execute([$videoId]);
+            // 删除数据库记录 (依靠外键 CASCADE 级联删除评论)
+            try {
+                $db->prepare('DELETE FROM videos WHERE id = ?')->execute([$videoId]);
+            } catch (\Exception $e) {
+                $response->getBody()->write(json_encode(['error' => '删除视频记录失败，请重试']));
+                return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+            }
+
+            // 数据库记录删除成功后，清理物理文件
+            foreach ($filesToDelete as $filePath) {
+                if (file_exists($filePath)) {
+                    @unlink($filePath);
+                }
+            }
 
             $response->getBody()->write(json_encode(['message' => '删除成功']));
             return $response->withHeader('Content-Type', 'application/json');
