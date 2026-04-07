@@ -7,6 +7,7 @@ const API_BASE = ''
 export const useAuthStore = defineStore('auth', () => {
 	const token = ref('')
 	const user = ref(null)
+	let _redirecting = false
 
 	const isLoggedIn = computed(() => !!token.value)
 	const isAdmin = computed(() => user.value?.role === 'admin')
@@ -52,13 +53,31 @@ export const useAuthStore = defineStore('auth', () => {
 		uni.reLaunch({ url: '/pages/login/login' })
 	}
 
+	/**
+	 * 处理 401 未授权响应（token 过期/失效）
+	 * 使用防抖标记避免多个并发请求同时触发重复跳转
+	 */
+	function handleUnauthorized() {
+		if (_redirecting) return
+		_redirecting = true
+		token.value = ''
+		user.value = null
+		uni.removeStorageSync('token')
+		uni.removeStorageSync('user')
+		uni.showToast({ title: '登录已过期，请重新登录', icon: 'none', duration: 2000 })
+		setTimeout(() => {
+			uni.reLaunch({ url: '/pages/login/login' })
+			setTimeout(() => { _redirecting = false }, 2000)
+		}, 300)
+	}
+
 	function getAuthHeader() {
 		return token.value ? { Authorization: `Bearer ${token.value}` } : {}
 	}
 
 	return {
 		token, user, isLoggedIn, isAdmin, username,
-		init, login, logout, getAuthHeader,
+		init, login, logout, handleUnauthorized, getAuthHeader,
 		API_BASE
 	}
 })

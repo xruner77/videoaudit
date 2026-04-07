@@ -89,6 +89,7 @@ import CommentThread from './components/CommentThread.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
 import { formatTime } from '../../composables/useUtils'
+import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
 
@@ -117,10 +118,9 @@ const {
 	reset: resetComments
 } = usePagination(async (params) => {
 	if (!videoId.value) return { data: [], total: 0 }
-	const res = await uni.request({
+	const res = await request({
 		url: `${authStore.API_BASE}/api/comments/${videoId.value}`,
 		method: 'GET',
-		header: authStore.getAuthHeader(),
 		data: params
 	})
 	if (res.statusCode === 200) {
@@ -235,10 +235,9 @@ onUnmounted(() => {
 // --- API ---
 async function fetchVideoDetail() {
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/videos`,
-			method: 'GET',
-			header: authStore.getAuthHeader()
+			method: 'GET'
 		})
 		if (res.statusCode === 200) {
 			const video = (res.data.videos || []).find(v => v.id == videoId.value)
@@ -269,10 +268,9 @@ async function fetchVideoDetail() {
 
 async function fetchMarkers() {
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/comments/${videoId.value}/markers`,
-			method: 'GET',
-			header: authStore.getAuthHeader()
+			method: 'GET'
 		})
 		if (res.statusCode === 200) {
 			markers.value = res.data.markers || []
@@ -283,11 +281,10 @@ async function fetchMarkers() {
 }
 
 function incrementViewCount(id) {
-	uni.request({
+	request({
 		url: `${authStore.API_BASE}/api/videos/${id}/view`,
-		method: 'POST',
-		header: authStore.getAuthHeader()
-	})
+		method: 'POST'
+	}).catch(() => {}) // 静默忽略——浏览计数为非关键操作
 }
 
 // --- VideoPlayer 事件处理 ---

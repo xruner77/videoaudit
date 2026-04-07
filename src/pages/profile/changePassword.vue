@@ -46,6 +46,7 @@
 import { ref } from 'vue'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
+import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
 const oldPassword = ref('')
@@ -69,12 +70,11 @@ async function handleSubmit() {
 
 	loading.value = true
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/auth/password`,
 			method: 'PUT',
 			header: {
-				'Content-Type': 'application/json',
-				...authStore.getAuthHeader()
+				'Content-Type': 'application/json'
 			},
 			data: {
 				old_password: oldPassword.value,

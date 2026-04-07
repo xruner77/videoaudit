@@ -72,6 +72,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
+import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
 
@@ -248,12 +249,11 @@ async function addRemote() {
 	uploading.value = true
 	try {
 		const duration = await getRemoteDuration(remoteUrl.value.trim())
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/videos/remote`,
 			method: 'POST',
 			header: {
-				'Content-Type': 'application/json',
-				...authStore.getAuthHeader()
+				'Content-Type': 'application/json'
 			},
 			data: {
 				title: title.value.trim(),

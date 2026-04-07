@@ -322,6 +322,7 @@ import CommentCard from '@/components/CommentCard.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
 import { formatDateSimple, getUserColor, updateTabBarForRole } from '@/composables/useUtils'
+import { request } from '@/composables/useRequest'
 
 const authStore = useAuthStore()
 
@@ -336,37 +337,34 @@ const recentComments = ref([])
 
 async function fetchDashboard() {
 	try {
-		// 并行请求：视频总数+最近5条、评论总数+最近5条、用户列表
-		const [videoRes, commentRes, userRes] = await Promise.all([
-			uni.request({
+		// 使用 allSettled 避免并发 401 时产生 unhandled rejection
+		const [videoRes, commentRes, userRes] = await Promise.allSettled([
+			request({
 				url: `${authStore.API_BASE}/api/videos`,
 				method: 'GET',
-				header: authStore.getAuthHeader(),
 				data: { limit: 5 }
 			}),
-			uni.request({
+			request({
 				url: `${authStore.API_BASE}/api/admin/comments`,
 				method: 'GET',
-				header: authStore.getAuthHeader(),
 				data: { limit: 5 }
 			}),
-			uni.request({
+			request({
 				url: `${authStore.API_BASE}/api/admin/users`,
-				method: 'GET',
-				header: authStore.getAuthHeader()
+				method: 'GET'
 			})
 		])
 
-		if (videoRes.statusCode === 200) {
-			dashStats.value.videos = videoRes.data.total || 0
-			recentVideos.value = videoRes.data.videos || []
+		if (videoRes.status === 'fulfilled' && videoRes.value.statusCode === 200) {
+			dashStats.value.videos = videoRes.value.data.total || 0
+			recentVideos.value = videoRes.value.data.videos || []
 		}
-		if (commentRes.statusCode === 200) {
-			dashStats.value.comments = commentRes.data.total || 0
-			recentComments.value = commentRes.data.comments || []
+		if (commentRes.status === 'fulfilled' && commentRes.value.statusCode === 200) {
+			dashStats.value.comments = commentRes.value.data.total || 0
+			recentComments.value = commentRes.value.data.comments || []
 		}
-		if (userRes.statusCode === 200) {
-			const users = userRes.data.users || []
+		if (userRes.status === 'fulfilled' && userRes.value.statusCode === 200) {
+			const users = userRes.value.data.users || []
 			dashStats.value.users = users.length
 			// 同时填充用户列表缓存，切换到用户 tab 时不用再请求
 			userList.value = users
@@ -399,10 +397,9 @@ const {
 	loadNextPage: loadNextVideos,
 	reset: resetVideos
 } = usePagination(async (params) => {
-	const res = await uni.request({
+	const res = await request({
 		url: `${authStore.API_BASE}/api/videos`,
 		method: 'GET',
-		header: authStore.getAuthHeader(),
 		data: {
 			...params,
 			q: videoQuery.value
@@ -426,10 +423,9 @@ const {
 	loadNextPage: loadNextComments,
 	reset: resetComments
 } = usePagination(async (params) => {
-	const res = await uni.request({
+	const res = await request({
 		url: `${authStore.API_BASE}/api/admin/comments`,
 		method: 'GET',
-		header: authStore.getAuthHeader(),
 		data: {
 			...params,
 			q: commentSearchQuery.value,
@@ -471,9 +467,8 @@ function switchTab(newTab) {
 
 async function fetchVideoOptions() {
 	try {
-		const res = await uni.request({
-			url: `${authStore.API_BASE}/api/videos/all-names`,
-			header: authStore.getAuthHeader()
+		const res = await request({
+			url: `${authStore.API_BASE}/api/videos/all-names`
 		})
 		if (res.data && res.data.videos) {
 			videoOptions.value = res.data.videos
@@ -518,10 +513,9 @@ async function deleteVideo(id) {
 		success: async (res) => {
 			if (!res.confirm) return
 			try {
-				const resp = await uni.request({
+				const resp = await request({
 					url: `${authStore.API_BASE}/api/videos/${id}`,
-					method: 'DELETE',
-					header: authStore.getAuthHeader()
+					method: 'DELETE'
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
@@ -543,10 +537,9 @@ async function deleteComment(id) {
 		success: async (res) => {
 			if (!res.confirm) return
 			try {
-				const resp = await uni.request({
+				const resp = await request({
 					url: `${authStore.API_BASE}/api/comments/${id}`,
-					method: 'DELETE',
-					header: authStore.getAuthHeader()
+					method: 'DELETE'
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
@@ -574,10 +567,9 @@ function goBack() {
 async function fetchUsers() {
 	loadingUsers.value = true
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/admin/users`,
-			method: 'GET',
-			header: authStore.getAuthHeader()
+			method: 'GET'
 		})
 		if (res.statusCode === 200) {
 			userList.value = res.data.users || []
@@ -599,12 +591,11 @@ async function createUser() {
 
 	creatingUser.value = true
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/admin/users`,
 			method: 'POST',
 			header: {
-				'Content-Type': 'application/json',
-				...authStore.getAuthHeader()
+				'Content-Type': 'application/json'
 			},
 			data: {
 				username: newUsername.value.trim(),
@@ -636,10 +627,9 @@ async function deleteUser(id, username) {
 		success: async (res) => {
 			if (!res.confirm) return
 			try {
-				const resp = await uni.request({
+				const resp = await request({
 					url: `${authStore.API_BASE}/api/admin/users/${id}`,
-					method: 'DELETE',
-					header: authStore.getAuthHeader()
+					method: 'DELETE'
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
@@ -667,10 +657,10 @@ async function resetPassword() {
 	}
 	resettingPassword.value = true
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/admin/users/${resetTargetId.value}/reset-password`,
 			method: 'PUT',
-			header: { 'Content-Type': 'application/json', ...authStore.getAuthHeader() },
+			header: { 'Content-Type': 'application/json' },
 			data: { password: resetNewPassword.value }
 		})
 		if (res.statusCode === 200) {

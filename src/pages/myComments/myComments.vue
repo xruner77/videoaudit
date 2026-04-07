@@ -50,6 +50,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { formatTime } from '../../composables/useUtils'
+import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
 const videoId = ref(0)
@@ -83,10 +84,9 @@ async function fetchComments() {
 	try {
 		// 为了简单起见，我们重新请求一次该用户的所有评论，然后在前端过滤出该视频的评论
 		// 如果有后端接口支持按用户和视频ID查询更好，但目前使用现有的 API
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/comments/user/${authStore.user.id}`,
-			method: 'GET',
-			header: authStore.getAuthHeader()
+			method: 'GET'
 		})
 		if (res.statusCode === 200) {
 			const allUserComments = res.data.comments || []
@@ -114,10 +114,9 @@ async function deleteComment(commentId) {
 		success: async (res) => {
 			if (!res.confirm) return
 			try {
-				const resp = await uni.request({
+				const resp = await request({
 					url: `${authStore.API_BASE}/api/comments/${commentId}`,
-					method: 'DELETE',
-					header: authStore.getAuthHeader()
+					method: 'DELETE'
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })

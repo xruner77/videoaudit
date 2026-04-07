@@ -132,6 +132,7 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from '../../../stores/authStore'
 import { formatTime, getUserColor as getAvatarColor } from '../../../composables/useUtils'
+import { request } from '../../../composables/useRequest'
 
 const authStore = useAuthStore()
 
@@ -307,10 +308,9 @@ async function handleDelete(commentId) {
 		success: async (res) => {
 			if (res.confirm) {
 				try {
-					const response = await uni.request({
+					const response = await request({
 						url: `${authStore.API_BASE}/api/comments/${commentId}`,
-						method: 'DELETE',
-						header: authStore.getAuthHeader()
+						method: 'DELETE'
 					})
 					if (response.statusCode === 200) {
 						uni.showToast({ title: '删除成功', icon: 'success' })

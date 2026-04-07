@@ -45,6 +45,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '../../../stores/authStore'
 import { formatTime } from '../../../composables/useUtils'
+import { request } from '../../../composables/useRequest'
 
 const authStore = useAuthStore()
 
@@ -146,12 +147,11 @@ async function submitComment() {
 		const imageUrls = await Promise.all(uploadPromises)
 		const imageUrlData = imageUrls.length > 0 ? JSON.stringify(imageUrls) : ''
 
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/comments`,
 			method: 'POST',
 			header: {
-				'Content-Type': 'application/json',
-				...authStore.getAuthHeader()
+				'Content-Type': 'application/json'
 			},
 			data: {
 				video_id: props.videoId,

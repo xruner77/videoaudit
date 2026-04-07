@@ -34,14 +34,14 @@ import Header from '../../components/Header.vue'
 import VideoCard from '../../components/VideoCard.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
+import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
 
 const { dataList, loading, hasMore, loadNextPage, reset } = usePagination(async (params) => {
-	const res = await uni.request({
+	const res = await request({
 		url: `${authStore.API_BASE}/api/videos`,
 		method: 'GET',
-		header: authStore.getAuthHeader(),
 		data: { ...params, user_id: authStore.user?.id }
 	})
 	if (res.statusCode === 200) return { data: res.data.videos, total: res.data.total }
@@ -61,7 +61,7 @@ async function deleteVideo(id) {
 		success: async (res) => {
 			if (!res.confirm) return
 			try {
-				const resp = await uni.request({ url: `${authStore.API_BASE}/api/videos/${id}`, method: 'DELETE', header: authStore.getAuthHeader() })
+				const resp = await request({ url: `${authStore.API_BASE}/api/videos/${id}`, method: 'DELETE' })
 				if (resp.statusCode === 200) { uni.showToast({ title: '已删除', icon: 'success' }); reset(); loadNextPage() }
 				else throw new Error(resp.data?.error || '删除失败')
 			} catch (e) { uni.showToast({ title: e.message, icon: 'none' }) }

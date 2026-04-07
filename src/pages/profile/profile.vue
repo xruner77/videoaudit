@@ -83,6 +83,7 @@ import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { getUserColor as getAvatarColor, formatTime, updateTabBarForRole } from '../../composables/useUtils'
+import { request } from '../../composables/useRequest'
 
 function getAvatarLetter(username) {
 	return username ? username.charAt(0).toUpperCase() : '?'
@@ -126,10 +127,9 @@ onShow(() => {
 async function fetchVideos() {
 	loadingVideos.value = true
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/videos`,
 			method: 'GET',
-			header: authStore.getAuthHeader(),
 			data: {
 				user_id: authStore.user?.id,
 				limit: 1 // 仅需要总数，减少数据传输
@@ -148,10 +148,9 @@ async function fetchVideos() {
 async function fetchMyComments() {
 	loadingComments.value = true
 	try {
-		const res = await uni.request({
+		const res = await request({
 			url: `${authStore.API_BASE}/api/comments/user/${authStore.user.id}`,
 			method: 'GET',
-			header: authStore.getAuthHeader(),
 			data: {
 				limit: 1 // 仅需要总数
 			}
@@ -190,10 +189,9 @@ async function deleteVideo(id) {
 		success: async (res) => {
 			if (!res.confirm) return
 			try {
-				const resp = await uni.request({
+				const resp = await request({
 					url: `${authStore.API_BASE}/api/videos/${id}`,
-					method: 'DELETE',
-					header: authStore.getAuthHeader()
+					method: 'DELETE'
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })

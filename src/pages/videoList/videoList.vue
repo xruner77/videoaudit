@@ -61,6 +61,7 @@ import { useAuthStore } from '@/stores/authStore'
 import Header from '@/components/Header.vue'
 import { usePagination } from '@/composables/usePagination'
 import { formatDuration, getVideoThumbUrl, updateTabBarForRole } from '@/composables/useUtils'
+import { request } from '@/composables/useRequest'
 
 const authStore = useAuthStore()
 
@@ -76,7 +77,7 @@ function formatDate(dateStr) {
 const searchQuery = ref('')
 const loaded = ref(false)
 const { dataList, loading, hasMore, total, loadNextPage, reset, silentRefresh } = usePagination(async (params) => {
-	const res = await uni.request({ url: `${authStore.API_BASE}/api/videos`, method: 'GET', header: authStore.getAuthHeader(), data: { ...params, q: searchQuery.value } })
+	const res = await request({ url: `${authStore.API_BASE}/api/videos`, method: 'GET', data: { ...params, q: searchQuery.value } })
 	if (res.statusCode === 200 && res.data) return { data: res.data.videos, total: res.data.total }
 	return { data: [], total: 0 }
 }, { limit: 10 })
