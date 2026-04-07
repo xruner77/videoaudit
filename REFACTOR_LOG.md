@@ -64,6 +64,7 @@
 - ✅ 前端部署至 `va.xruner.tk`，登录、Dashboard、视频列表、评论均正常
 - ✅ JWT 新密钥工作正常（旧 token 会自动失效，用户重新登录即可）
 - ✅ Git 已提交并推送：`[安全+重构] JWT密钥外部化至配置文件，提取公共工具函数useUtils.js消除7个文件中的重复代码`
+- ✅ P5 拆分 review.vue：`npm run build:h5` 编译通过，零错误（2062行 → 4个文件共2042行）
 
 ---
 
@@ -106,21 +107,31 @@
 
 ---
 
-### 🔲 P5 — 拆分 review.vue [MEDIUM]
+### ✅ P5 — 拆分 review.vue [MEDIUM → 已完成]
 
-**当前问题**：[review.vue](file:///d:/tfx/myapp/videoaudit/src/pages/review/review.vue) 有 2055 行，包含至少 6 个独立职责。
+**原问题**：review.vue 有 2062 行，包含 6+ 个独立职责。
 
-**建议拆分方案**：
+**执行结果**：拆分为 3 个子组件 + 瘦身后的主页面，使用 props + emits 模式通信。
+
 ```
-review.vue (2055行) → 拆分为:
-├── VideoPlayer.vue (~400行) — 播放器控制 + 全屏管理
-├── ProgressBar.vue (~150行) — 进度条 + 手势 + 评论圆点
-├── CommentThread.vue (~300行) — 评论列表 + 排序 + 展开/折叠
-├── CommentForm.vue (~200行) — 评论输入 + 图片上传
-└── review.vue (~400行) — 页面容器 + 数据获取
+review.vue (2062行) → 拆分为:
+├── components/VideoPlayer.vue   (584行) — 播放器 + 控制条 + 进度条 + 评论打点
+├── components/CommentForm.vue   (334行) — 评论输入 + 图片上传 + 回复
+├── components/CommentThread.vue (656行) — 评论列表 + 排序 + 展开/折叠 + 排序弹窗
+└── review.vue                   (468行) — 页面容器 + 数据获取 + 状态协调
 ```
 
-**风险**：拆分涉及跨组件状态共享（`currentTime`, `videoContext` 等），需要 `provide/inject` 或 props 传递。工作量较大（3+ 天）。
+| 新增/修改组件 | 行数 | 职责 |
+|-------------|------|------|
+| [VideoPlayer.vue](file:///d:/tfx/myapp/videoaudit/src/pages/review/components/VideoPlayer.vue) | 584 | 视频播放器UI、自定义控制条、进度条手势、评论打点 |
+| [CommentForm.vue](file:///d:/tfx/myapp/videoaudit/src/pages/review/components/CommentForm.vue) | 334 | 评论输入、图片上传、回复提示、未登录提示 |
+| [CommentThread.vue](file:///d:/tfx/myapp/videoaudit/src/pages/review/components/CommentThread.vue) | 656 | 评论列表渲染、排序、子评论展开/折叠、删除、排序弹窗 |
+| [review.vue](file:///d:/tfx/myapp/videoaudit/src/pages/review/review.vue) | 468 | 页面容器、API调用、状态管理、子组件协调 |
+
+**跨组件通信**：纯 props + emits，未引入 provide/inject 或新 store。`videoContext` 保留在 review.vue 中。
+
+> [!NOTE]
+> 与原始建议的差异：ProgressBar 合并进 VideoPlayer（进度条与播放器耦合紧密），排序弹窗合并进 CommentThread。最终 3 个子组件而非 4 个。
 
 ---
 

@@ -25,7 +25,11 @@ description: "一键打包并使用 SCP 部署 H5 代码及按需上传后端代
    ```powershell
    npm run build:h5
    ```
-2. **使用 SCP 上传完整前端**:
+2. **清理远端旧的前端资源**（避免旧版本带 hash 的 JS/CSS 残留）:
+   ```powershell
+   ssh -i ~/.ssh/a2.xruner.tk root@a2.xruner.tk "rm -rf /www/wwwroot/va.xruner.tk/assets /www/wwwroot/va.xruner.tk/static /www/wwwroot/va.xruner.tk/index.html"
+   ```
+3. **使用 SCP 上传完整前端**:
    ```powershell
    scp -i ~/.ssh/a2.xruner.tk -r dist/build/h5/* root@a2.xruner.tk:/www/wwwroot/va.xruner.tk/
    ```
