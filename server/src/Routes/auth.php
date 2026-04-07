@@ -170,7 +170,14 @@ return function (App $app, PDO $db, array $config) {
 
     // GET /api/admin/users - 管理员获取用户列表
     $app->get('/api/admin/users', function (Request $request, Response $response) use ($db) {
-        $stmt = $db->query('SELECT id, username, role, created_at FROM users ORDER BY created_at DESC');
+        $stmt = $db->query('
+            SELECT 
+                u.id, u.username, u.role, u.created_at,
+                (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id) AS video_count,
+                (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
+            FROM users u 
+            ORDER BY u.created_at DESC
+        ');
         $users = $stmt->fetchAll();
 
         $response->getBody()->write(json_encode(['users' => $users]));

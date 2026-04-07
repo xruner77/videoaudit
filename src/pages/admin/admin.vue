@@ -251,6 +251,14 @@
 								<view class="meta-tag">
 									<text>{{ formatDateSimple(u.created_at) }}</text>
 								</view>
+								<view class="meta-tag" style="margin-left: 8rpx;">
+									<uni-icons type="videocam" size="12" color="#a0a0b8" />
+									<text style="margin-left:4rpx">{{ u.video_count || 0 }}</text>
+								</view>
+								<view class="meta-tag" style="margin-left: 8rpx;">
+									<uni-icons type="chat" size="12" color="#a0a0b8" />
+									<text style="margin-left:4rpx">{{ u.comment_count || 0 }}</text>
+								</view>
 							</view>
 						</view>
 						<view class="user-actions-row" v-if="u.id != authStore.user?.id">
