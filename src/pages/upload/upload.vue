@@ -25,7 +25,7 @@
 					<view class="picker-content" v-if="!selectedFile">
 						<uni-icons type="cloud-upload" size="48" color="#888" />
 						<text class="picker-text">点击选择视频文件</text>
-						<text class="picker-hint">支持 mp4、webm 格式，最大 500MB</text>
+						<text class="picker-hint">支持 mp4、webm 格式，最大 50MB</text>
 					</view>
 					<view class="picker-content picker-selected" v-else>
 						<uni-icons type="videocam" size="48" color="#4caf50" />
@@ -140,6 +140,9 @@ async function uploadLocal() {
 	if (!selectedFile.value) {
 		return uni.showToast({ title: '请选择视频文件', icon: 'none' })
 	}
+	if (selectedFile.value.size > 50 * 1024 * 1024) {
+		return uni.showToast({ title: '文件大小不能超过 50MB', icon: 'none' })
+	}
 
 	uploading.value = true
 	uploadProgress.value = 0
@@ -164,10 +167,22 @@ async function uploadLocal() {
 		await new Promise((resolve, reject) => {
 			xhr.onload = () => {
 				if (xhr.status === 201) {
-					resolve(JSON.parse(xhr.responseText))
+					try {
+						resolve(JSON.parse(xhr.responseText))
+					} catch (e) {
+						resolve({})
+					}
 				} else {
-					const data = JSON.parse(xhr.responseText)
-					reject(new Error(data.error || '上传失败'))
+					try {
+						const data = JSON.parse(xhr.responseText)
+						reject(new Error(data.error || '上传失败'))
+					} catch (e) {
+						if (xhr.status === 413) {
+							reject(new Error('文件过大，超出服务器限制 (413)'))
+						} else {
+							reject(new Error(`上传失败 (HTTP ${xhr.status})`))
+						}
+					}
 				}
 			}
 			xhr.onerror = () => reject(new Error('网络错误'))
@@ -187,10 +202,23 @@ async function uploadLocal() {
 				},
 				header: authStore.getAuthHeader(),
 				success: (res) => {
-					if (res.statusCode === 201) resolve(JSON.parse(res.data))
-					else {
-						const data = JSON.parse(res.data)
-						reject(new Error(data.error || '上传失败'))
+					if (res.statusCode === 201) {
+						try {
+							resolve(JSON.parse(res.data))
+						} catch(e) {
+							resolve({})
+						}
+					} else {
+						try {
+							const data = JSON.parse(res.data)
+							reject(new Error(data.error || '上传失败'))
+						} catch (e) {
+							if (res.statusCode === 413) {
+								reject(new Error('文件过大，超出服务器限制 (413)'))
+							} else {
+								reject(new Error(`上传失败 (HTTP ${res.statusCode})`))
+							}
+						}
 					}
 				},
 				fail: (err) => reject(new Error(err.errMsg || '上传失败'))

@@ -31,14 +31,16 @@
 			<!-- 数据统计入口（普通用户） -->
 			<view class="stat-grid" v-if="!authStore.isAdmin">
 				<view class="stat-card" @click="goMyVideos">
-					<text class="stat-number">{{ videoTotal }}</text>
+					<view v-if="loadingVideos" class="skeleton-box stat-num-skeleton"></view>
+					<text v-else class="stat-number">{{ videoTotal }}</text>
 					<view class="stat-label-row">
 						<text class="stat-icon">🎬</text>
 						<text class="stat-label">我的视频</text>
 					</view>
 				</view>
 				<view class="stat-card" @click="goMyComments">
-					<text class="stat-number">{{ commentTotal }}</text>
+					<view v-if="loadingComments" class="skeleton-box stat-num-skeleton"></view>
+					<text v-else class="stat-number">{{ commentTotal }}</text>
 					<view class="stat-label-row">
 						<text class="stat-icon">💬</text>
 						<text class="stat-label">我的评论</text>
@@ -432,6 +434,26 @@ function formatDate(dateStr) {
 .stat-label {
 	font-size: 28rpx;
 	color: #888;
+}
+
+/* 骨架屏特性 */
+@keyframes shimmer {
+	0% { background-position: -200% 0; }
+	100% { background-position: 200% 0; }
+}
+
+.skeleton-box {
+	background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 75%);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+	border-radius: 8rpx;
+}
+
+.stat-num-skeleton {
+	width: 80rpx;
+	height: 56rpx;
+	margin-bottom: 12rpx; /* Align visually with text */
+	margin-top: 6rpx;
 }
 
 /* 退出登录 */

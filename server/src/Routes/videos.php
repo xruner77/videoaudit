@@ -150,9 +150,9 @@ return function (App $app, PDO $db, array $config) {
                 return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
             }
 
-            // 限制文件大小 (500MB)
-            if ($file->getSize() > 500 * 1024 * 1024) {
-                $response->getBody()->write(json_encode(['error' => '文件大小不能超过 500MB']));
+            // 限制文件大小 (50MB)
+            if ($file->getSize() > 50 * 1024 * 1024) {
+                $response->getBody()->write(json_encode(['error' => '文件大小不能超过 50MB']));
                 return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
             }
 
