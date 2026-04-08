@@ -1,0 +1,59 @@
+/* 共享组件样式 */
+
+.filter-section {
+	margin-bottom: 30rpx;
+	position: sticky;
+	top: 208rpx;
+	z-index: 105;
+	background: #1a1a2e;
+	padding-top: 10rpx;
+	padding-bottom: 20rpx;
+	margin-top: 0;
+	margin-left: -30rpx;
+	margin-right: -30rpx;
+	padding-left: 30rpx;
+	padding-right: 30rpx;
+}
+
+.search-box-wrapper {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 12rpx;
+	height: 80rpx;
+	display: flex;
+	align-items: center;
+	padding: 0 24rpx;
+	position: relative;
+	z-index: 101;
+}
+
+.search-icon {
+	margin-right: 16rpx;
+}
+
+.search-input {
+	flex: 1;
+	font-size: 26rpx;
+	color: #fff;
+}
+
+.clear-btn {
+	padding: 10rpx;
+}
+
+.load-more-status {
+	text-align: center;
+	padding: 40rpx 0;
+	font-size: 24rpx;
+	color: #444;
+}
+
+.empty-state {
+	text-align: center;
+	padding: 100rpx 60rpx;
+}
+
+.empty-state text, .empty-state uni-text {
+	color: #444;
+	font-size: 26rpx;
+}
