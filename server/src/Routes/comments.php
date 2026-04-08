@@ -179,7 +179,7 @@ return function (App $app, PDO $db, array $config) {
             SELECT c.id, c.`timestamp`, u.username 
             FROM comments c 
             LEFT JOIN users u ON c.user_id = u.id 
-            WHERE c.video_id = ? 
+            WHERE c.video_id = ? AND c.parent_id IS NULL
             ORDER BY c.`timestamp` ASC
         ');
         $stmt->execute([$videoId]);
