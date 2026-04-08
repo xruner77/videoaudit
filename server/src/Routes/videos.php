@@ -142,14 +142,6 @@ return function (App $app, PDO $db, array $config) {
                 return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
             }
 
-            // 校验文件类型
-            $allowedTypes = ['video/mp4', 'video/webm'];
-            $clientMediaType = $file->getClientMediaType();
-            if (!in_array($clientMediaType, $allowedTypes)) {
-                $response->getBody()->write(json_encode(['error' => '仅支持 mp4 和 webm 格式']));
-                return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
-            }
-
             // 校验文件扩展名
             $originalName = $file->getClientFilename();
             $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
@@ -166,7 +158,18 @@ return function (App $app, PDO $db, array $config) {
 
             $duration = (int)($data['duration'] ?? 0);
             $filename = uniqid('vid_') . '.' . $ext;
-            $file->moveTo($uploadDir . '/' . $filename);
+            $dstPath = $uploadDir . '/' . $filename;
+            $file->moveTo($dstPath);
+
+            // 核心修复：彻底校验文件真实的实体 MIME 类型（防恶意篡改外层 Content-Type）
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $realMime = $finfo->file($dstPath);
+            $allowedTypes = ['video/mp4', 'video/webm'];
+            if (!in_array($realMime, $allowedTypes)) {
+                @unlink($dstPath);
+                $response->getBody()->write(json_encode(['error' => '内部数据安全检测拦截：文件魔数异常，请上传真实的视频文件！']));
+                return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+            }
 
             $now = date('Y-m-d H:i:s');
             $stmt = $db->prepare('INSERT INTO videos (title, url, type, user_id, duration, created_at) VALUES (?, ?, ?, ?, ?, ?)');

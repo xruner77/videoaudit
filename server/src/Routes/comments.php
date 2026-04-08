@@ -177,14 +177,6 @@ return function (App $app, PDO $db, array $config) {
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
         }
 
-        // 校验文件类型
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        $clientMediaType = $file->getClientMediaType();
-        if (!in_array($clientMediaType, $allowedTypes)) {
-            $response->getBody()->write(json_encode(['error' => '仅支持 JPG / PNG / WebP / GIF 格式']));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
-        }
-
         // 限制文件大小 (10MB)
         if ($file->getSize() > 10 * 1024 * 1024) {
             $response->getBody()->write(json_encode(['error' => '图片大小不能超过 10MB']));
@@ -197,7 +189,18 @@ return function (App $app, PDO $db, array $config) {
         }
 
         $filename = uniqid('img_') . '.' . $ext;
-        $file->moveTo($uploadDir . '/' . $filename);
+        $dstPath = $uploadDir . '/' . $filename;
+        $file->moveTo($dstPath);
+
+        // 核心修复：物理文件落地后，根据其文件头部魔数流解构其实际 MIME
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $realMime = $finfo->file($dstPath);
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!in_array($realMime, $allowedTypes)) {
+            @unlink($dstPath);
+            $response->getBody()->write(json_encode(['error' => '内部数据安全检测拦截：禁止伪造后缀名的图片文件']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
 
         $response->getBody()->write(json_encode([
             'url' => '/uploads/images/' . $filename

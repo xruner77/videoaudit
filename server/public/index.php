@@ -29,8 +29,13 @@ $app->add(function ($request, $handler) use ($dbConfig) {
     $origin = $request->getHeaderLine('Origin');
     $allowedOrigins = $dbConfig['allowed_origins'] ?? [];
     
-    // 如果请求源在白名单内，则允许跨域
-    $originToSet = in_array($origin, $allowedOrigins) ? $origin : ($allowedOrigins[0] ?? '*');
+    // 如果请求源在非空的情况下又不在白名单内，剥除其 CORS 放行授权
+    if ($origin && !in_array($origin, $allowedOrigins)) {
+        return $handler->handle($request);
+    }
+    
+    // 取原本 origin 或默认星号 (兜底)
+    $originToSet = $origin ?: ($allowedOrigins[0] ?? '*');
 
     $response = $handler->handle($request);
     return $response
