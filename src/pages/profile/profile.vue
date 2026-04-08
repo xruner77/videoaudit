@@ -85,11 +85,11 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import { useAuthStore } from '../../stores/authStore'
-import { getUserColor as getAvatarColor, formatTime, updateTabBarForRole } from '../../composables/useUtils'
+import { getUserColor as getAvatarColor, updateTabBarForRole } from '../../composables/useUtils'
 import { request } from '../../composables/useRequest'
 
 function getAvatarLetter(username) {
@@ -103,25 +103,6 @@ const loadingComments = ref(false)
 // 视频列表相关
 const videoTotal = ref(0)
 const loadingVideos = ref(false)
-
-// 按视频分组评论
-const groupedComments = computed(() => {
-	if (!myComments.value || myComments.value.length === 0) return []
-	
-	const groupMap = new Map()
-	myComments.value.forEach(comment => {
-		if (!groupMap.has(comment.video_id)) {
-			groupMap.set(comment.video_id, {
-				video_id: comment.video_id,
-				video_title: comment.video_title,
-				comments: []
-			})
-		}
-		groupMap.get(comment.video_id).comments.push(comment)
-	})
-	
-	return Array.from(groupMap.values())
-})
 
 onShow(() => {
 	if (authStore.isLoggedIn) {
@@ -172,49 +153,16 @@ async function fetchMyComments() {
 	}
 }
 
-
-async function handleLogout() {
+function handleLogout() {
 	uni.showModal({
 		title: '确认退出',
 		content: '确定要退出登录吗？',
 		success: (res) => {
 			if (res.confirm) {
-				authStore.token = ''
-				authStore.user = null
-				uni.removeStorageSync('token')
-				uni.removeStorageSync('user')
-				uni.reLaunch({ url: '/pages/login/login' })
+				authStore.logout()
 			}
 		}
 	})
-}
-
-async function deleteVideo(id) {
-	uni.showModal({
-		title: '确认删除',
-		content: '确定要删除此视频及所有评论吗？',
-		success: async (res) => {
-			if (!res.confirm) return
-			try {
-				const resp = await request({
-					url: `${authStore.API_BASE}/api/videos/${id}`,
-					method: 'DELETE'
-				})
-				if (resp.statusCode === 200) {
-					uni.showToast({ title: '已删除', icon: 'success' })
-					fetchVideos()
-				} else {
-					throw new Error(resp.data?.error || '删除失败')
-				}
-			} catch (e) {
-				uni.showToast({ title: e.message, icon: 'none' })
-			}
-		}
-	})
-}
-
-function goReview(id) {
-	uni.navigateTo({ url: `/pages/review/review?id=${id}` })
 }
 
 function goLogin() {
@@ -225,34 +173,16 @@ function goUpload() {
 	uni.navigateTo({ url: '/pages/upload/upload' })
 }
 
-function goAdmin() {
-	uni.navigateTo({ url: '/pages/admin/admin' })
-}
-
 function goPasswordChange() {
 	uni.navigateTo({ url: '/pages/profile/changePassword' })
 }
 
-function goToMyComments(videoId) {
-	uni.navigateTo({ url: `/pages/myComments/myComments?videoId=${videoId}` })
-}
-
 function goMyVideos() {
-	// Navigate to profile sub-page showing my videos
 	uni.navigateTo({ url: '/pages/profile/myVideos' })
 }
 
 function goMyComments() {
-	// Navigate to profile sub-page showing my comments grouped by video
 	uni.navigateTo({ url: '/pages/profile/myCommentsList' })
-}
-
-
-
-function formatDate(dateStr) {
-	if (!dateStr) return ''
-	const d = new Date(dateStr)
-	return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
 }
 </script>
 

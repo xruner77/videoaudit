@@ -46,7 +46,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import DataState from '../../components/DataState.vue'
 import { useAuthStore } from '../../stores/authStore'
-import { formatTime } from '../../composables/useUtils'
+import { formatTime, formatDateFull } from '../../composables/useUtils'
 import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
@@ -79,15 +79,16 @@ onLoad((options) => {
 async function fetchComments() {
 	loading.value = true
 	try {
-		// 为了简单起见，我们重新请求一次该用户的所有评论，然后在前端过滤出该视频的评论
-		// 如果有后端接口支持按用户和视频ID查询更好，但目前使用现有的 API
 		const res = await request({
 			url: `${authStore.API_BASE}/api/comments/user/${authStore.user.id}`,
-			method: 'GET'
+			method: 'GET',
+			data: {
+				video_id: videoId.value,
+				limit: 100
+			}
 		})
 		if (res.statusCode === 200) {
-			const allUserComments = res.data.comments || []
-			comments.value = allUserComments.filter(c => c.video_id === videoId.value)
+			comments.value = res.data.comments || []
 			
 			// 如果评论都被删光了，返回个人中心
 			if (comments.value.length === 0) {
@@ -135,11 +136,7 @@ function goToVideo(id) {
 
 
 
-function formatDate(dateStr) {
-	if (!dateStr) return ''
-	const d = new Date(dateStr)
-	return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
-}
+const formatDate = formatDateFull
 </script>
 
 <style scoped>
@@ -244,10 +241,6 @@ function formatDate(dateStr) {
 	display: flex;
 	align-items: center;
 	padding: 10rpx 0;
-}
-
-.delete-btn:active {
-	opacity: 0.7;
 }
 
 .delete-btn:active {

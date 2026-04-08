@@ -28,6 +28,16 @@ export function formatDateSimple(dateStr) {
 }
 
 /**
+ * 格式化日期为 "YYYY-MM-DD HH:mm"
+ * @param {string} dateStr - ISO 日期字符串
+ */
+export function formatDateFull(dateStr) {
+	if (!dateStr) return ''
+	const d = new Date(dateStr)
+	return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+}
+
+/**
  * 根据用户名生成头像背景色
  * @param {string} username - 用户名
  */

@@ -76,32 +76,53 @@ return function (App $app, PDO $db, array $config) {
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\AuthMiddleware($jwtSecret, true));
 
-    // GET /api/comments/user/{userId} - 获取用户的所有评论 (需登录, 支持分页)
+    // GET /api/comments/user/{userId} - 获取用户的所有评论 (需登录, 支持分页和按视频过滤)
+    // 安全: 仅允许查看自己的评论（管理员可查看任意用户）
     $app->get('/api/comments/user/{userId}', function (Request $request, Response $response, array $args) use ($db) {
+        $caller = $request->getAttribute('user');
         $userId = (int) $args['userId'];
+
+        // IDOR 防护：非管理员只能查看自己的评论
+        if ($userId !== (int) $caller->sub && ($caller->role ?? '') !== 'admin') {
+            $response->getBody()->write(json_encode(['error' => '无权访问']));
+            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+        }
+
         $queryParams = $request->getQueryParams();
         $page = (int)($queryParams['page'] ?? 1);
         $limit = min(100, max(1, (int)($queryParams['limit'] ?? 20)));
         $offset = ($page - 1) * $limit;
+        $videoId = isset($queryParams['video_id']) ? (int) $queryParams['video_id'] : null;
+
+        // 构建 WHERE 条件
+        $where = 'c.user_id = ?';
+        $params = [$userId];
+        if ($videoId) {
+            $where .= ' AND c.video_id = ?';
+            $params[] = $videoId;
+        }
 
         // 获取总数
-        $countStmt = $db->prepare('SELECT COUNT(*) FROM comments WHERE user_id = ?');
-        $countStmt->execute([$userId]);
+        $countStmt = $db->prepare("SELECT COUNT(*) FROM comments c WHERE $where");
+        $countStmt->execute($params);
         $total = (int)$countStmt->fetchColumn();
 
-        $stmt = $db->prepare('
+        // 获取分页数据
+        $stmt = $db->prepare("
             SELECT c.*, u.username, v.title as video_title, v.created_at as video_created_at, uv.username as uploader
             FROM comments c
             LEFT JOIN users u ON c.user_id = u.id
             LEFT JOIN videos v ON c.video_id = v.id
             LEFT JOIN users uv ON v.user_id = uv.id
-            WHERE c.user_id = ?
+            WHERE $where
             ORDER BY c.created_at DESC
             LIMIT ? OFFSET ?
-        ');
-        $stmt->bindValue(1, $userId, PDO::PARAM_INT);
-        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
-        $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+        ");
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k + 1, $v, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
         $stmt->execute();
         $comments = $stmt->fetchAll();
 

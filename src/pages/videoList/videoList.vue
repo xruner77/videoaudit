@@ -67,7 +67,7 @@ import { useAuthStore } from '@/stores/authStore'
 import Header from '@/components/Header.vue'
 import DataState from '@/components/DataState.vue'
 import { usePagination } from '@/composables/usePagination'
-import { formatDuration, getVideoThumbUrl, updateTabBarForRole } from '@/composables/useUtils'
+import { formatDuration, getVideoThumbUrl, updateTabBarForRole, formatDateSimple } from '@/composables/useUtils'
 import { request } from '@/composables/useRequest'
 
 const authStore = useAuthStore()
@@ -75,11 +75,7 @@ const authStore = useAuthStore()
 function goReview(id) { uni.navigateTo({ url: `/pages/review/review?id=${id}` }) }
 function goUpload() { uni.navigateTo({ url: '/pages/upload/upload' }) }
 
-function formatDate(dateStr) {
-	if (!dateStr) return ''
-	const d = new Date(dateStr)
-	return `${d.getMonth() + 1}月${d.getDate()}日`
-}
+const formatDate = formatDateSimple
 
 const searchQuery = ref('')
 const loaded = ref(false)

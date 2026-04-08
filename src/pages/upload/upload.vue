@@ -172,6 +172,9 @@ async function uploadLocal() {
 					} catch (e) {
 						resolve({})
 					}
+				} else if (xhr.status === 401) {
+					authStore.handleUnauthorized()
+					reject(new Error('登录已过期，请重新登录'))
 				} else {
 					try {
 						const data = JSON.parse(xhr.responseText)
@@ -307,9 +310,6 @@ async function addRemote() {
 	}
 }
 
-function goReview(id) {
-	uni.navigateTo({ url: `/pages/review/review?id=${id}` })
-}
 
 function formatSize(bytes) {
 	if (!bytes) return '未知大小'

@@ -173,9 +173,11 @@ return function (App $app, PDO $db, array $config) {
         $stmt = $db->query('
             SELECT 
                 u.id, u.username, u.role, u.created_at,
-                (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id) AS video_count,
-                (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
-            FROM users u 
+                COALESCE(v.cnt, 0) AS video_count,
+                COALESCE(c.cnt, 0) AS comment_count
+            FROM users u
+            LEFT JOIN (SELECT user_id, COUNT(*) cnt FROM videos GROUP BY user_id) v ON v.user_id = u.id
+            LEFT JOIN (SELECT user_id, COUNT(*) cnt FROM comments GROUP BY user_id) c ON c.user_id = u.id
             ORDER BY u.created_at DESC
         ');
         $users = $stmt->fetchAll();
