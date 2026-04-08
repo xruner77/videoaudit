@@ -20,32 +20,38 @@
 				<view class="clear-btn" v-if="searchQuery" @click="clearSearch"><uni-icons type="closeempty" size="14" color="#888" /></view>
 			</view>
 		</view>
-		<view class="video-grid">
-			<view class="video-card" v-for="video in dataList" :key="video.id" @click="goReview(video.id)">
-				<view class="video-thumb">
-					<video class="thumb-video" :src="getVideoThumbUrl(video)" :controls="false" :show-center-play-btn="false" :enable-progress-gesture="false" object-fit="cover" muted preload="metadata" playsinline webkit-playsinline x5-video-player-type="h5-page"></video>
-					<view class="thumb-overlay"></view>
-					<view class="video-type-badge"><text><uni-icons type="chat" size="12" color="#fff" style="margin-right:4rpx;"/>{{ video.comment_count !== undefined ? video.comment_count : 0 }}</text></view>
-					<view class="video-duration-badge" v-if="video.duration"><text>{{ formatDuration(video.duration) }}</text></view>
-				</view>
-				<view class="video-info">
-					<view class="info-row"><text class="video-title">{{ video.title }}</text></view>
-					<view class="video-meta">
-						<text class="meta-user"><uni-icons type="person" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.uploader || '未知' }}</text>
-						<view class="meta-stats">
-							<text class="meta-date">{{ formatDate(video.created_at) }}</text>
-							<text class="meta-comments" v-if="video.views !== undefined"><uni-icons type="eye" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.views }}</text>
+		<DataState
+			:initLoading="loading && dataList.length === 0"
+			:isEmpty="dataList.length === 0"
+			emptyText="暂无相关视频"
+			emptyIcon="videocam"
+			:showPagination="dataList.length > 0"
+			:loadingMore="loading && dataList.length > 0"
+			:hasMore="hasMore"
+			skeletonType="video"
+			@loadMore="loadNextPage"
+		>
+			<view class="video-grid">
+				<view class="video-card" v-for="video in dataList" :key="video.id" @click="goReview(video.id)">
+					<view class="video-thumb">
+						<video class="thumb-video" :src="getVideoThumbUrl(video)" :controls="false" :show-center-play-btn="false" :enable-progress-gesture="false" object-fit="cover" muted preload="metadata" playsinline webkit-playsinline x5-video-player-type="h5-page"></video>
+						<view class="thumb-overlay"></view>
+						<view class="video-type-badge"><text><uni-icons type="chat" size="12" color="#fff" style="margin-right:4rpx;"/>{{ video.comment_count !== undefined ? video.comment_count : 0 }}</text></view>
+						<view class="video-duration-badge" v-if="video.duration"><text>{{ formatDuration(video.duration) }}</text></view>
+					</view>
+					<view class="video-info">
+						<view class="info-row"><text class="video-title">{{ video.title }}</text></view>
+						<view class="video-meta">
+							<text class="meta-user"><uni-icons type="person" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.uploader || '未知' }}</text>
+							<view class="meta-stats">
+								<text class="meta-date">{{ formatDate(video.created_at) }}</text>
+								<text class="meta-comments" v-if="video.views !== undefined"><uni-icons type="eye" size="12" color="#aaa" style="margin-right:2rpx;"/>{{ video.views }}</text>
+							</view>
 						</view>
 					</view>
 				</view>
 			</view>
-			<view class="empty-state" v-if="dataList.length === 0 && !loading"><text>暂无相关视频</text></view>
-			<view class="load-more-status" v-if="dataList.length > 0">
-				<text v-if="loading">正在加载...</text>
-				<text v-else-if="hasMore">继续滚动加载</text>
-				<text v-else>—— 已加载全部视频 ——</text>
-			</view>
-		</view>
+		</DataState>
 		<view class="fab" @click="goUpload"><text class="fab-icon"><uni-icons type="plusempty" size="24" color="#fff"/></text></view>
 		<view class="footer">
 			<image class="footer-logo" src="/static/logo_company.png" mode="aspectFit"></image>
@@ -59,6 +65,7 @@ import { ref } from 'vue'
 import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/authStore'
 import Header from '@/components/Header.vue'
+import DataState from '@/components/DataState.vue'
 import { usePagination } from '@/composables/usePagination'
 import { formatDuration, getVideoThumbUrl, updateTabBarForRole } from '@/composables/useUtils'
 import { request } from '@/composables/useRequest'
@@ -124,9 +131,6 @@ onReachBottom(() => {
 .video-meta { display: flex; justify-content: space-between; align-items: center; }
 .meta-stats { display: flex; align-items: center; gap: 16rpx; }
 .meta-user, .meta-date, .meta-comments { font-size: 22rpx; color: #666; }
-.empty-state { grid-column: span 2; width: 100%; text-align: center; padding: 100rpx 0; box-sizing: border-box; }
-.empty-state text { color: #444; font-size: 26rpx; }
-.load-more-status { grid-column: span 2; width: 100%; text-align: center; padding: 40rpx 0; font-size: 24rpx; color: #444; }
 .fab { position: fixed; bottom: 160rpx; right: 40rpx; width: 100rpx; height: 100rpx; border-radius: 50%; background: linear-gradient(135deg, #6c5ce7, #a855f7); display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 24rpx rgba(108,92,231,0.4); z-index: 100; }
 .fab:active { transform: scale(0.9); }
 .fab-icon { font-size: 48rpx; color: #fff; font-weight: 300; }

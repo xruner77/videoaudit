@@ -2,28 +2,29 @@
 	<view class="page-container">
 		<Header title="我的评论" showBack />
 
-		<view class="mc-container">
-			<CommentCard
-				v-for="c in dataList"
-				:key="c.id"
-				:comment="c"
-				:showDelete="true"
-				:clickable="true"
-				@click="goToVideo(c.video_id)"
-				@delete="deleteComment(c.id)"
-			/>
-
-			<view class="load-more-status" v-if="dataList.length > 0">
-				<text v-if="loading">正在加载...</text>
-				<text v-else-if="hasMore">加载更多评论记录...</text>
-				<text v-else>—— 已加载全部评论 ——</text>
+		<DataState
+			:initLoading="loading && dataList.length === 0"
+			:isEmpty="dataList.length === 0"
+			emptyText="暂无评论记录"
+			emptyIcon="chat"
+			:showPagination="dataList.length > 0"
+			:loadingMore="loading && dataList.length > 0"
+			:hasMore="hasMore"
+			skeletonType="comment"
+			@loadMore="loadNextPage"
+		>
+			<view class="mc-container">
+				<CommentCard
+					v-for="c in dataList"
+					:key="c.id"
+					:comment="c"
+					:showDelete="true"
+					:clickable="true"
+					@click="goToVideo(c.video_id)"
+					@delete="deleteComment(c.id)"
+				/>
 			</view>
-
-			<view class="empty-state" v-if="!loading && dataList.length === 0">
-				<uni-icons type="chat" size="40" color="#444" />
-				<text class="empty-text">暂无评论记录</text>
-			</view>
-		</view>
+		</DataState>
 	</view>
 </template>
 
@@ -31,6 +32,7 @@
 import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import CommentCard from '../../components/CommentCard.vue'
+import DataState from '../../components/DataState.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
 import { request } from '../../composables/useRequest'
@@ -72,8 +74,5 @@ async function deleteComment(id) {
 </script>
 
 <style scoped>
-.mc-container { padding: 20rpx 30rpx 60rpx; }
-.load-more-status { width: 100%; text-align: center; padding: 40rpx 0; font-size: 24rpx; color: #444; }
-.empty-state { text-align: center; padding: 100rpx 0; }
-.empty-text { font-size: 28rpx; color: #555; display: block; margin-top: 16rpx; }
+.mc-container { padding: 20rpx 30rpx 20rpx; }
 </style>

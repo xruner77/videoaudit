@@ -56,34 +56,34 @@
 			<view class="search-mask" v-if="showVideoPicker" @click="showVideoPicker = false"></view>
 		</view>
 
-		<CommentCard
-			v-for="c in commentList"
-			:key="c.id"
-			:comment="c"
-			:showDelete="true"
-			:clickable="true"
-			@click="$emit('go-review', c.video_id)"
-			@delete="deleteComment(c.id)"
-		/>
-
-		<view class="load-more-status" v-if="commentList.length > 0">
-			<text v-if="loadingComments">正在加载...</text>
-			<text v-else-if="hasMoreComments" @click="loadNextComments">加载更多评论</text>
-			<text v-else>—— 已加载全部 ——</text>
-		</view>
-
-		<view class="empty-state" v-if="commentList.length === 0 && loadingComments">
-			<text>正在加载...</text>
-		</view>
-		<view class="empty-state" v-else-if="commentList.length === 0 && !loadingComments">
-			<text>暂无相关评论</text>
-		</view>
+		<DataState
+			:initLoading="loadingComments && commentList.length === 0"
+			:isEmpty="commentList.length === 0"
+			emptyText="暂无相关评论"
+			emptyIcon="chat"
+			:showPagination="commentList.length > 0"
+			:loadingMore="loadingComments && commentList.length > 0"
+			:hasMore="hasMoreComments"
+			skeletonType="comment"
+			@loadMore="loadNextComments"
+		>
+			<CommentCard
+				v-for="c in commentList"
+				:key="c.id"
+				:comment="c"
+				:showDelete="true"
+				:clickable="true"
+				@click="$emit('go-review', c.video_id)"
+				@delete="deleteComment(c.id)"
+			/>
+		</DataState>
 	</view>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import CommentCard from '@/components/CommentCard.vue'
+import DataState from '@/components/DataState.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
 import { request } from '@/composables/useRequest'
@@ -109,7 +109,8 @@ const {
 	loading: loadingComments,
 	hasMore: hasMoreComments,
 	loadNextPage: loadNextComments,
-	reset: resetComments
+	reset: resetComments,
+	silentRefresh: silentRefreshComments
 } = usePagination(async (params) => {
 	const res = await request({
 		url: `${authStore.API_BASE}/api/admin/comments`,
@@ -148,21 +149,28 @@ async function fetchVideoOptions() {
 	}
 }
 
-function refreshComments() { resetComments(); loadNextComments() }
+async function refreshComments(showLoader = true) { 
+	if (showLoader) {
+		resetComments()
+		await loadNextComments()
+	} else {
+		await silentRefreshComments()
+	}
+}
 
-function onSearchComments() { refreshComments() }
-function handleClearCommentQuery() { commentSearchQuery.value = ''; refreshComments() }
+function onSearchComments() { refreshComments(true) }
+function handleClearCommentQuery() { commentSearchQuery.value = ''; refreshComments(true) }
 
 function selectVideoFilter(video) {
 	if (!video) { selectedVideoId.value = null; videoSearchQuery.value = '' }
 	else { selectedVideoId.value = video.id; videoSearchQuery.value = video.title }
-	showVideoPicker.value = false; refreshComments()
+	showVideoPicker.value = false; refreshComments(true)
 }
 
 function clearVideoTag() {
 	selectedVideoId.value = null
 	videoSearchQuery.value = ''
-	refreshComments()
+	refreshComments(true)
 }
 
 async function deleteComment(id) {
@@ -178,7 +186,7 @@ async function deleteComment(id) {
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
-					refreshComments()
+					refreshComments(false)
 					emit('data-changed', 'comments')
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
@@ -190,9 +198,9 @@ async function deleteComment(id) {
 	})
 }
 
-function refresh() {
+function refresh(showLoader = false) {
 	if (initialized.value) {
-		refreshComments()
+		refreshComments(showLoader)
 		fetchVideoOptions()
 	}
 }
@@ -200,7 +208,7 @@ function refresh() {
 function init() {
 	if (!initialized.value) {
 		initialized.value = true
-		refreshComments()
+		refreshComments(true)
 		fetchVideoOptions()
 	}
 }

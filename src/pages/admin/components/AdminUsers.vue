@@ -7,43 +7,48 @@
 				<uni-icons type="plusempty" size="14" color="#fff" style="margin-right:4rpx;" />新建
 			</view>
 		</view>
-		<view class="admin-item-card" v-for="u in userList" :key="u.id">
-			<view class="admin-item-header">
-				<view class="user-avatar-small" :style="{ background: getUserColor(u.username) }">
-					<text class="avatar-letter-s">{{ u.username ? u.username.charAt(0).toUpperCase() : '?' }}</text>
-				</view>
-				<view class="admin-item-info">
-					<text class="admin-item-title">{{ u.username }}</text>
-					<view class="admin-item-meta">
-						<view :class="['role-badge', u.role === 'admin' ? 'role-admin' : 'role-user']">
-							<text>{{ u.role === 'admin' ? '管理员' : '审片员' }}</text>
-						</view>
-						<view class="meta-tag">
-							<text>{{ formatDateSimple(u.created_at) }}</text>
-						</view>
-						<view class="meta-tag" style="margin-left: 8rpx;">
-							<uni-icons type="videocam" size="12" color="#a0a0b8" />
-							<text style="margin-left:4rpx">{{ u.video_count || 0 }}</text>
-						</view>
-						<view class="meta-tag" style="margin-left: 8rpx;">
-							<uni-icons type="chat" size="12" color="#a0a0b8" />
-							<text style="margin-left:4rpx">{{ u.comment_count || 0 }}</text>
+		<DataState
+			:initLoading="loadingUsers && userList.length === 0"
+			:isEmpty="userList.length === 0"
+			emptyText="暂无相关用户"
+			emptyIcon="person"
+			skeletonType="user"
+		>
+			<view class="admin-item-card" v-for="u in userList" :key="u.id">
+				<view class="admin-item-header">
+					<view class="user-avatar-small" :style="{ background: getUserColor(u.username) }">
+						<text class="avatar-letter-s">{{ u.username ? u.username.charAt(0).toUpperCase() : '?' }}</text>
+					</view>
+					<view class="admin-item-info">
+						<text class="admin-item-title">{{ u.username }}</text>
+						<view class="admin-item-meta">
+							<view :class="['role-badge', u.role === 'admin' ? 'role-admin' : 'role-user']">
+								<text>{{ u.role === 'admin' ? '管理员' : '审片员' }}</text>
+							</view>
+							<view class="meta-tag">
+								<text>{{ formatDateSimple(u.created_at) }}</text>
+							</view>
+							<view class="meta-tag" style="margin-left: 8rpx;">
+								<uni-icons type="videocam" size="12" color="#a0a0b8" />
+								<text style="margin-left:4rpx">{{ u.video_count || 0 }}</text>
+							</view>
+							<view class="meta-tag" style="margin-left: 8rpx;">
+								<uni-icons type="chat" size="12" color="#a0a0b8" />
+								<text style="margin-left:4rpx">{{ u.comment_count || 0 }}</text>
+							</view>
 						</view>
 					</view>
-				</view>
-				<view class="user-actions-row" v-if="u.id != authStore.user?.id">
-					<text class="btn-link neutral small-text" @click="openResetPassword(u.id, u.username)">
-						<uni-icons type="locked" size="14" color="#a0a0b8" style="margin-right:6rpx;" />重置密码
-					</text>
-					<text class="btn-link danger small-text" @click="deleteUser(u.id, u.username)">
-						<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
-					</text>
+					<view class="user-actions-row" v-if="u.id != authStore.user?.id">
+						<text class="btn-link neutral small-text" @click="openResetPassword(u.id, u.username)">
+							<uni-icons type="locked" size="14" color="#a0a0b8" style="margin-right:6rpx;" />重置密码
+						</text>
+						<text class="btn-link danger small-text" @click="deleteUser(u.id, u.username)">
+							<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:6rpx;" />删除
+						</text>
+					</view>
 				</view>
 			</view>
-		</view>
-		<view class="empty-state" v-if="userList.length === 0 && !loadingUsers">
-			<text>暂无用户</text>
-		</view>
+		</DataState>
 
 		<!-- 创建用户弹层 -->
 		<view class="modal-mask" v-if="showCreateUser" @click="showCreateUser = false">
@@ -97,6 +102,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import DataState from '@/components/DataState.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { formatDateSimple, getUserColor } from '@/composables/useUtils'
 import { request } from '@/composables/useRequest'
@@ -119,8 +125,10 @@ const resetNewPassword = ref('')
 const resettingPassword = ref(false)
 const initialized = ref(false)
 
-async function fetchUsers() {
-	loadingUsers.value = true
+async function fetchUsers(showLoader = true) {
+	if (showLoader && userList.value.length === 0) {
+		loadingUsers.value = true
+	}
 	try {
 		const res = await request({
 			url: `${authStore.API_BASE}/api/admin/users`,
@@ -164,7 +172,7 @@ async function createUser() {
 			newPassword.value = ''
 			newRole.value = 'user'
 			showCreateUser.value = false
-			fetchUsers()
+			fetchUsers(false)
 			emit('data-changed', 'users')
 		} else {
 			throw new Error(res.data?.error || '创建失败')
@@ -189,7 +197,7 @@ async function deleteUser(id, username) {
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
-					fetchUsers()
+					fetchUsers(false)
 					emit('data-changed', 'users')
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
@@ -236,16 +244,16 @@ async function resetPasswordAction() {
 // 模板中绑定的名称
 const resetPassword = resetPasswordAction
 
-function refresh() {
+function refresh(showLoader = false) {
 	if (initialized.value) {
-		fetchUsers()
+		fetchUsers(showLoader)
 	}
 }
 
 function init() {
 	if (!initialized.value) {
 		initialized.value = true
-		fetchUsers()
+		fetchUsers(true)
 	}
 }
 

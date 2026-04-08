@@ -1,79 +1,86 @@
 <template>
-	<view class="dashboard-section">
-		<!-- 统计卡片 -->
-		<view class="stats-row">
-			<view class="stat-card stat-purple" @click="$emit('switch-tab', 'videos')">
-				<view class="stat-icon-wrap">
-					<uni-icons type="videocam" size="22" color="#fff" />
+	<DataState
+		:initLoading="loading && dashStats.videos === 0"
+		:isEmpty="false"
+		skeletonType="dashboard"
+	>
+		<view class="dashboard-section">
+			<!-- 统计卡片 -->
+			<view class="stats-row">
+				<view class="stat-card stat-purple" @click="$emit('switch-tab', 'videos')">
+					<view class="stat-icon-wrap">
+						<uni-icons type="videocam" size="22" color="#fff" />
+					</view>
+					<view class="stat-body">
+						<text class="stat-number">{{ dashStats.videos }}</text>
+						<text class="stat-label">视频总数</text>
+					</view>
 				</view>
-				<view class="stat-body">
-					<text class="stat-number">{{ dashStats.videos }}</text>
-					<text class="stat-label">视频总数</text>
+				<view class="stat-card stat-blue" @click="$emit('switch-tab', 'comments')">
+					<view class="stat-icon-wrap">
+						<uni-icons type="chat" size="22" color="#fff" />
+					</view>
+					<view class="stat-body">
+						<text class="stat-number">{{ dashStats.comments }}</text>
+						<text class="stat-label">评论总数</text>
+					</view>
+				</view>
+				<view class="stat-card stat-green" @click="$emit('switch-tab', 'users')">
+					<view class="stat-icon-wrap">
+						<uni-icons type="person" size="22" color="#fff" />
+					</view>
+					<view class="stat-body">
+						<text class="stat-number">{{ dashStats.users }}</text>
+						<text class="stat-label">用户总数</text>
+					</view>
 				</view>
 			</view>
-			<view class="stat-card stat-blue" @click="$emit('switch-tab', 'comments')">
-				<view class="stat-icon-wrap">
-					<uni-icons type="chat" size="22" color="#fff" />
-				</view>
-				<view class="stat-body">
-					<text class="stat-number">{{ dashStats.comments }}</text>
-					<text class="stat-label">评论总数</text>
-				</view>
-			</view>
-			<view class="stat-card stat-green" @click="$emit('switch-tab', 'users')">
-				<view class="stat-icon-wrap">
-					<uni-icons type="person" size="22" color="#fff" />
-				</view>
-				<view class="stat-body">
-					<text class="stat-number">{{ dashStats.users }}</text>
-					<text class="stat-label">用户总数</text>
-				</view>
-			</view>
-		</view>
 
-		<!-- 最近视频 -->
-		<view class="recent-section">
-			<view class="section-header">
-				<text class="section-title">最近视频</text>
-				<text class="section-more" @click="$emit('switch-tab', 'videos')">查看全部 →</text>
+			<!-- 最近视频 -->
+			<view class="recent-section">
+				<view class="section-header">
+					<text class="section-title">最近视频</text>
+					<text class="section-more" @click="$emit('switch-tab', 'videos')">查看全部 →</text>
+				</view>
+				<view v-if="recentVideos.length === 0" class="empty-hint">
+					<text>暂无视频</text>
+				</view>
+				<VideoCard
+					v-else
+					v-for="v in recentVideos"
+					:key="v.id"
+					:video="v"
+					@click="$emit('go-review', v.id)"
+				/>
 			</view>
-			<view v-if="recentVideos.length === 0" class="empty-hint">
-				<text>暂无视频</text>
-			</view>
-			<VideoCard
-				v-else
-				v-for="v in recentVideos"
-				:key="v.id"
-				:video="v"
-				@click="$emit('go-review', v.id)"
-			/>
-		</view>
 
-		<!-- 最近评论 -->
-		<view class="recent-section">
-			<view class="section-header">
-				<text class="section-title">最近评论</text>
-				<text class="section-more" @click="$emit('switch-tab', 'comments')">查看全部 →</text>
+			<!-- 最近评论 -->
+			<view class="recent-section">
+				<view class="section-header">
+					<text class="section-title">最近评论</text>
+					<text class="section-more" @click="$emit('switch-tab', 'comments')">查看全部 →</text>
+				</view>
+				<view v-if="recentComments.length === 0" class="empty-hint">
+					<text>暂无评论</text>
+				</view>
+				<CommentCard
+					v-else
+					v-for="c in recentComments"
+					:key="c.id"
+					:comment="c"
+					:clickable="true"
+					@click="$emit('go-review', c.video_id)"
+				/>
 			</view>
-			<view v-if="recentComments.length === 0" class="empty-hint">
-				<text>暂无评论</text>
-			</view>
-			<CommentCard
-				v-else
-				v-for="c in recentComments"
-				:key="c.id"
-				:comment="c"
-				:clickable="true"
-				@click="$emit('go-review', c.video_id)"
-			/>
 		</view>
-	</view>
+	</DataState>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import VideoCard from '@/components/VideoCard.vue'
 import CommentCard from '@/components/CommentCard.vue'
+import DataState from '@/components/DataState.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { request } from '@/composables/useRequest'
 
@@ -84,8 +91,12 @@ const authStore = useAuthStore()
 const dashStats = ref({ videos: 0, comments: 0, users: 0 })
 const recentVideos = ref([])
 const recentComments = ref([])
+const loading = ref(true)
 
-async function fetchDashboard() {
+async function fetchDashboard(showLoader = true) {
+	if (showLoader && dashStats.value.videos === 0) {
+		loading.value = true
+	}
 	try {
 		const [videoRes, commentRes, userRes] = await Promise.allSettled([
 			request({
@@ -118,11 +129,13 @@ async function fetchDashboard() {
 		}
 	} catch (e) {
 		console.error('Dashboard fetch failed:', e)
+	} finally {
+		loading.value = false
 	}
 }
 
-function refresh() {
-	fetchDashboard()
+function refresh(showLoader = false) {
+	fetchDashboard(showLoader)
 }
 
 defineExpose({ refresh })

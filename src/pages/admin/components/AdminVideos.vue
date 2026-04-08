@@ -16,31 +16,33 @@
 			</view>
 		</view>
 
-		<VideoCard
-			v-for="v in videoList"
-			:key="v.id"
-			:video="v"
-			:showDelete="true"
-			@click="$emit('go-review', v.id)"
-			@delete="deleteVideo(v.id)"
-		/>
-		<view class="load-more-status" v-if="videoList.length > 0">
-			<text v-if="loadingVideos">正在加载...</text>
-			<text v-else-if="hasMoreVideos" @click="loadNextVideos">加载更多视频</text>
-			<text v-else>—— 已加载全部 ——</text>
-		</view>
-		<view class="empty-state" v-if="videoList.length === 0 && loadingVideos">
-			<text>正在加载...</text>
-		</view>
-		<view class="empty-state" v-else-if="videoList.length === 0 && !loadingVideos">
-			<text>暂无相关视频</text>
-		</view>
+		<DataState
+			:initLoading="loadingVideos && videoList.length === 0"
+			:isEmpty="videoList.length === 0"
+			emptyText="暂无相关视频"
+			emptyIcon="videocam"
+			:showPagination="videoList.length > 0"
+			:loadingMore="loadingVideos && videoList.length > 0"
+			:hasMore="hasMoreVideos"
+			skeletonType="video"
+			@loadMore="loadNextVideos"
+		>
+			<VideoCard
+				v-for="v in videoList"
+				:key="v.id"
+				:video="v"
+				:showDelete="true"
+				@click="$emit('go-review', v.id)"
+				@delete="deleteVideo(v.id)"
+			/>
+		</DataState>
 	</view>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import VideoCard from '@/components/VideoCard.vue'
+import DataState from '@/components/DataState.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePagination } from '@/composables/usePagination'
 import { request } from '@/composables/useRequest'
@@ -57,7 +59,8 @@ const {
 	loading: loadingVideos,
 	hasMore: hasMoreVideos,
 	loadNextPage: loadNextVideos,
-	reset: resetVideos
+	reset: resetVideos,
+	silentRefresh: silentRefreshVideos
 } = usePagination(async (params) => {
 	const res = await request({
 		url: `${authStore.API_BASE}/api/videos`,
@@ -73,13 +76,17 @@ const {
 	return { data: [], total: 0 }
 }, { limit: 20 })
 
-function refreshVideos() {
-	resetVideos()
-	loadNextVideos()
+async function refreshVideos(showLoader = true) {
+	if (showLoader) {
+		resetVideos()
+		await loadNextVideos()
+	} else {
+		await silentRefreshVideos()
+	}
 }
 
-function onSearchVideos() { refreshVideos() }
-function handleClearVideoQuery() { videoQuery.value = ''; refreshVideos() }
+function onSearchVideos() { refreshVideos(true) }
+function handleClearVideoQuery() { videoQuery.value = ''; refreshVideos(true) }
 
 async function deleteVideo(id) {
 	uni.showModal({
@@ -94,7 +101,7 @@ async function deleteVideo(id) {
 				})
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
-					refreshVideos()
+					refreshVideos(false)
 					emit('data-changed', 'videos')
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
@@ -106,16 +113,16 @@ async function deleteVideo(id) {
 	})
 }
 
-function refresh() {
+function refresh(showLoader = false) {
 	if (initialized.value) {
-		refreshVideos()
+		refreshVideos(showLoader)
 	}
 }
 
 function init() {
 	if (!initialized.value) {
 		initialized.value = true
-		refreshVideos()
+		refreshVideos(true)
 	}
 }
 

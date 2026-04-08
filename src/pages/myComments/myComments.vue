@@ -2,45 +2,41 @@
 	<view class="page-container">
 		<Header title="我的评论" showBack />
 
-		<view class="section" v-if="loading">
-			<view class="loading-state">
-				<view class="loading-spinner"></view>
-				<text>正在加载评论...</text>
-			</view>
-		</view>
-
-		<view class="section" v-else>
-			<view class="video-info-card" @click="goToVideo(videoId)" v-if="videoInfo">
-				<view class="video-icon"><uni-icons type="videocam" size="24" color="#a855f7" /></view>
-				<view class="video-details">
-					<text class="video-title">{{ videoInfo.title }}</text>
-					<text class="video-meta">👤 {{ videoInfo.uploader }} · {{ formatDate(videoInfo.created_at) }}</text>
+		<DataState
+			:initLoading="loading"
+			:isEmpty="comments.length === 0"
+			emptyText="该视频下暂无评论"
+			emptyIcon="chat"
+			skeletonType="comment"
+		>
+			<view class="section">
+				<view class="video-info-card" @click="goToVideo(videoId)" v-if="videoInfo">
+					<view class="video-icon"><uni-icons type="videocam" size="24" color="#a855f7" /></view>
+					<view class="video-details">
+						<text class="video-title">{{ videoInfo.title }}</text>
+						<text class="video-meta">👤 {{ videoInfo.uploader }} · {{ formatDate(videoInfo.created_at) }}</text>
+					</view>
+					<uni-icons type="right" size="18" color="#666" />
 				</view>
-				<uni-icons type="right" size="18" color="#666" />
-			</view>
 
-			<view class="section-header">
-				<text class="section-title">评论列表 ({{ comments.length }} 条)</text>
-			</view>
-
-			<view class="comment-card" v-for="c in comments" :key="c.id">
-				<view class="comment-card-top">
-					<text class="comment-timestamp">视频位置: {{ formatTime(c.timestamp) }}</text>
+				<view class="section-header">
+					<text class="section-title">评论列表 ({{ comments.length }} 条)</text>
 				</view>
-				<text class="comment-text">{{ c.content }}</text>
-				<view class="comment-card-bottom">
-					<text class="comment-date">{{ formatDate(c.created_at) }}</text>
-					<text class="delete-btn" @click.stop="deleteComment(c.id)">
-						<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:4rpx;" />删除
-					</text>
+
+				<view class="comment-card" v-for="c in comments" :key="c.id">
+					<view class="comment-card-top">
+						<text class="comment-timestamp">视频位置: {{ formatTime(c.timestamp) }}</text>
+					</view>
+					<text class="comment-text">{{ c.content }}</text>
+					<view class="comment-card-bottom">
+						<text class="comment-date">{{ formatDate(c.created_at) }}</text>
+						<text class="delete-btn" @click.stop="deleteComment(c.id)">
+							<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:4rpx;" />删除
+						</text>
+					</view>
 				</view>
 			</view>
-
-			<view class="empty-state" v-if="comments.length === 0">
-				<uni-icons type="chat" size="40" color="#444" />
-				<text class="empty-text">该视频下暂无评论</text>
-			</view>
-		</view>
+		</DataState>
 	</view>
 </template>
 
@@ -48,6 +44,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
+import DataState from '../../components/DataState.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { formatTime } from '../../composables/useUtils'
 import { request } from '../../composables/useRequest'
@@ -253,29 +250,7 @@ function formatDate(dateStr) {
 	opacity: 0.7;
 }
 
-.empty-state, .loading-state {
-	text-align: center;
-	padding: 120rpx 0;
-}
-
-.empty-text, .loading-state text {
-	font-size: 28rpx;
-	color: #555;
-	display: block;
-	margin-top: 16rpx;
-}
-
-.loading-spinner {
-	width: 60rpx;
-	height: 60rpx;
-	border: 4rpx solid rgba(168, 85, 247, 0.2);
-	border-radius: 50%;
-	border-top-color: #a855f7;
-	animation: spin 1s ease-in-out infinite;
-	margin: 0 auto;
-}
-
-@keyframes spin {
-	to { transform: rotate(360deg); }
+.delete-btn:active {
+	opacity: 0.7;
 }
 </style>

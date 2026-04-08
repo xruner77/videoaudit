@@ -72,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '@/components/Header.vue'
 import { useAuthStore } from '@/stores/authStore'
@@ -90,11 +90,13 @@ const videosRef = ref(null)
 const commentsRef = ref(null)
 const usersRef = ref(null)
 
-onShow(() => {
+onShow(async () => {
 	if (!authStore.isAdmin) return
 	updateTabBarForRole(true)
-	// Dashboard 始终刷新
-	dashboardRef.value?.refresh()
+	// 在 uni-app Vue3 中，首次 onShow 触发时组件可能尚未 mount，ref 会为 null
+	await nextTick()
+	// 换成 DataState 骨架屏幕后，不再有打断手势交互的顾虑，首次进入正常展示骨架屏
+	dashboardRef.value?.refresh(true)
 	// 评论 Tab 的视频筛选下拉也需要刷新
 	commentsRef.value?.fetchVideoOptions()
 })
@@ -113,7 +115,7 @@ function switchTab(newTab) {
 	tab.value = newTab
 
 	if (newTab === 'dashboard') {
-		dashboardRef.value?.refresh()
+		dashboardRef.value?.refresh(true)
 	} else if (newTab === 'videos') {
 		videosRef.value?.init()
 	} else if (newTab === 'comments') {
@@ -124,11 +126,11 @@ function switchTab(newTab) {
 }
 
 function onDataChanged(source) {
-	// 跳过触发者自身（它已经在内部刷新过了），刷新其他 Tab
-	if (source !== 'dashboard') dashboardRef.value?.refresh()
-	if (source !== 'videos') videosRef.value?.refresh()
-	if (source !== 'comments') commentsRef.value?.refresh()
-	if (source !== 'users') usersRef.value?.refresh()
+	// 跳过触发者自身（它已经在内部刷新过了），静默刷新其他 Tab 避免干扰 UI
+	if (source !== 'dashboard') dashboardRef.value?.refresh(false)
+	if (source !== 'videos') videosRef.value?.refresh(false)
+	if (source !== 'comments') commentsRef.value?.refresh(false)
+	if (source !== 'users') usersRef.value?.refresh(false)
 }
 
 function goReview(id) {

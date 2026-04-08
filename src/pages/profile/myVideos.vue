@@ -2,29 +2,30 @@
 	<view class="page-container">
 		<Header title="我的视频" showBack />
 
-		<view class="mv-container">
-			<VideoCard
-				v-for="v in dataList"
-				:key="v.id"
-				:video="v"
-				:showDelete="true"
-				:showUploader="false"
-				:showDate="true"
-				@click="goReview(v.id)"
-				@delete="deleteVideo(v.id)"
-			/>
-
-			<view class="load-more-status" v-if="dataList.length > 0">
-				<text v-if="loading">正在加载...</text>
-				<text v-else-if="hasMore">继续滚动加载</text>
-				<text v-else>—— 已加载全部视频 ——</text>
+		<DataState
+			:initLoading="loading && dataList.length === 0"
+			:isEmpty="dataList.length === 0"
+			emptyText="暂无上传的视频"
+			emptyIcon="videocam"
+			:showPagination="dataList.length > 0"
+			:loadingMore="loading && dataList.length > 0"
+			:hasMore="hasMore"
+			skeletonType="video"
+			@loadMore="loadNextPage"
+		>
+			<view class="mv-container">
+				<VideoCard
+					v-for="v in dataList"
+					:key="v.id"
+					:video="v"
+					:showDelete="true"
+					:showUploader="false"
+					:showDate="true"
+					@click="goReview(v.id)"
+					@delete="deleteVideo(v.id)"
+				/>
 			</view>
-
-			<view class="empty-state" v-if="!loading && dataList.length === 0">
-				<uni-icons type="videocam" size="40" color="#444" />
-				<text class="empty-text">暂无上传的视频</text>
-			</view>
-		</view>
+		</DataState>
 	</view>
 </template>
 
@@ -32,6 +33,7 @@
 import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import VideoCard from '../../components/VideoCard.vue'
+import DataState from '../../components/DataState.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
 import { request } from '../../composables/useRequest'
@@ -73,8 +75,5 @@ function goReview(id) { uni.navigateTo({ url: `/pages/review/review?id=${id}` })
 </script>
 
 <style scoped>
-.mv-container { padding: 20rpx 30rpx 60rpx; }
-.load-more-status { width: 100%; text-align: center; padding: 40rpx 0; font-size: 24rpx; color: #444; }
-.empty-state { text-align: center; padding: 100rpx 0; }
-.empty-text { font-size: 28rpx; color: #555; display: block; margin-top: 16rpx; }
+.mv-container { padding: 20rpx 30rpx 20rpx; }
 </style>
