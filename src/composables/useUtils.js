@@ -18,23 +18,17 @@ export function formatDuration(seconds) {
 export const formatTime = formatDuration
 
 /**
- * 格式化日期为 "X月X日"
+ * 统一日期格式化函数
  * @param {string} dateStr - ISO 日期字符串
+ * @param {string} format - 'simple' (默认, M月D日) 或 'full' (YYYY-MM-DD HH:mm)
  */
-export function formatDateSimple(dateStr) {
+export function formatDate(dateStr, format = 'simple') {
 	if (!dateStr) return ''
 	const d = new Date(dateStr)
+	if (format === 'full') {
+		return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+	}
 	return `${d.getMonth() + 1}月${d.getDate()}日`
-}
-
-/**
- * 格式化日期为 "YYYY-MM-DD HH:mm"
- * @param {string} dateStr - ISO 日期字符串
- */
-export function formatDateFull(dateStr) {
-	if (!dateStr) return ''
-	const d = new Date(dateStr)
-	return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
 }
 
 /**

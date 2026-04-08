@@ -14,7 +14,7 @@
 					<view class="video-icon"><uni-icons type="videocam" size="24" color="#a855f7" /></view>
 					<view class="video-details">
 						<text class="video-title">{{ videoInfo.title }}</text>
-						<text class="video-meta">👤 {{ videoInfo.uploader }} · {{ formatDate(videoInfo.created_at) }}</text>
+						<text class="video-meta">👤 {{ videoInfo.uploader }} · {{ localFormatDate(videoInfo.created_at) }}</text>
 					</view>
 					<uni-icons type="right" size="18" color="#666" />
 				</view>
@@ -29,7 +29,7 @@
 					</view>
 					<text class="comment-text">{{ c.content }}</text>
 					<view class="comment-card-bottom">
-						<text class="comment-date">{{ formatDate(c.created_at) }}</text>
+						<text class="comment-date">{{ localFormatDate(c.created_at) }}</text>
 						<text class="delete-btn" @click.stop="deleteComment(c.id)">
 							<uni-icons type="trash" size="14" color="#e74c3c" style="margin-right:4rpx;" />删除
 						</text>
@@ -46,7 +46,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import Header from '../../components/Header.vue'
 import DataState from '../../components/DataState.vue'
 import { useAuthStore } from '../../stores/authStore'
-import { formatTime, formatDateFull } from '../../composables/useUtils'
+import { formatTime, formatDate } from '../../composables/useUtils'
 import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
@@ -136,7 +136,9 @@ function goToVideo(id) {
 
 
 
-const formatDate = formatDateFull
+// 覆盖页面的 formatDate 为带有默认 'full' 的包装函数，或者可以直接在模板里调用 formatDate(date, 'full')
+// 为了尽量少改动模板，这里包一层
+const localFormatDate = (date) => formatDate(date, 'full')
 </script>
 
 <style scoped>

@@ -7,7 +7,7 @@
 			</view>
 			<view class="rc-user-info">
 				<text class="rc-username">{{ comment.username }}</text>
-				<text class="rc-date">{{ formatDateSimple(comment.created_at) }}</text>
+				<text class="rc-date">{{ formatDate(comment.created_at) }}</text>
 			</view>
 			<view class="rc-delete-btn" v-if="showDelete" @click.stop="$emit('delete')">
 				<uni-icons type="trash" size="16" color="#e74c3c" />
@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { getUserColor, formatDateSimple, formatTime } from '@/composables/useUtils'
+import { getUserColor, formatDate, formatTime } from '@/composables/useUtils'
 
 defineProps({
 	comment: { type: Object, required: true },

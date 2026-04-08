@@ -27,7 +27,7 @@
 				<uni-icons v-if="showUploader" type="person" size="12" color="#666" style="margin-right:4rpx;" />
 				<text v-if="showUploader">{{ video.uploader || '未知' }}</text>
 				<text class="vm-type-tag">{{ video.type === 'local' ? '本地' : '远程' }}</text>
-				<text class="vm-date" v-if="showDate">{{ formatDateSimple(video.created_at) }}</text>
+				<text class="vm-date" v-if="showDate">{{ formatDate(video.created_at) }}</text>
 			</view>
 			<view class="vm-stats-row">
 				<view class="vm-stat"><uni-icons type="chat" size="12" color="#888" /><text>{{ video.comment_count || 0 }}</text></view>
@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { formatDuration, getVideoThumbUrl, formatDateSimple } from '@/composables/useUtils'
+import { formatDuration, getVideoThumbUrl, formatDate } from '@/composables/useUtils'
 
 defineProps({
 	video: { type: Object, required: true },

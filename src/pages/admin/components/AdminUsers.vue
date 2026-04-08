@@ -26,7 +26,7 @@
 								<text>{{ u.role === 'admin' ? '管理员' : '审片员' }}</text>
 							</view>
 							<view class="meta-tag">
-								<text>{{ formatDateSimple(u.created_at) }}</text>
+								<text>{{ formatDate(u.created_at) }}</text>
 							</view>
 							<view class="meta-tag" style="margin-left: 8rpx;">
 								<uni-icons type="videocam" size="12" color="#a0a0b8" />
@@ -104,7 +104,7 @@
 import { ref } from 'vue'
 import DataState from '@/components/DataState.vue'
 import { useAuthStore } from '@/stores/authStore'
-import { formatDateSimple, getUserColor } from '@/composables/useUtils'
+import { formatDate, getUserColor } from '@/composables/useUtils'
 import { request } from '@/composables/useRequest'
 
 const emit = defineEmits(['data-changed'])

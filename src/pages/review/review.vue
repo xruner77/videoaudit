@@ -94,7 +94,7 @@ import CommentForm from './components/CommentForm.vue'
 import CommentThread from './components/CommentThread.vue'
 import { useAuthStore } from '../../stores/authStore'
 import { usePagination } from '../../composables/usePagination'
-import { formatTime } from '../../composables/useUtils'
+import { formatTime, formatDate } from '../../composables/useUtils'
 import { request } from '../../composables/useRequest'
 
 const authStore = useAuthStore()
@@ -252,8 +252,7 @@ async function fetchVideoDetail() {
 			videoUploader.value = video.uploader || '未知'
 			
 			if (video.created_at) {
-				const d = new Date(video.created_at)
-				videoUploadDate.value = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
+				videoUploadDate.value = formatDate(video.created_at)
 			}
 			
 			videoViews.value = video.views || 0
