@@ -26,7 +26,7 @@ return function (App $app, PDO $db, array $config) {
         $queryParams = $request->getQueryParams();
         $q = $queryParams['q'] ?? '';
         $page = (int)($queryParams['page'] ?? 1);
-        $limit = (int)($queryParams['limit'] ?? 20);
+        $limit = min(100, max(1, (int)($queryParams['limit'] ?? 20)));
         $offset = ($page - 1) * $limit;
 
         $sql = ' FROM videos v LEFT JOIN users u ON v.user_id = u.id ';

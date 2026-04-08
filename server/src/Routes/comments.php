@@ -25,7 +25,7 @@ return function (App $app, PDO $db, array $config) {
         $videoId = $queryParams['video_id'] ?? null;
         $q = $queryParams['q'] ?? '';
         $page = (int)($queryParams['page'] ?? 1);
-        $limit = (int)($queryParams['limit'] ?? 20);
+        $limit = min(100, max(1, (int)($queryParams['limit'] ?? 20)));
         $offset = ($page - 1) * $limit;
 
         $sql = ' FROM comments c 
@@ -81,7 +81,7 @@ return function (App $app, PDO $db, array $config) {
         $userId = (int) $args['userId'];
         $queryParams = $request->getQueryParams();
         $page = (int)($queryParams['page'] ?? 1);
-        $limit = (int)($queryParams['limit'] ?? 20);
+        $limit = min(100, max(1, (int)($queryParams['limit'] ?? 20)));
         $offset = ($page - 1) * $limit;
 
         // 获取总数
@@ -119,7 +119,7 @@ return function (App $app, PDO $db, array $config) {
         $videoId = (int) $args['videoId'];
         $queryParams = $request->getQueryParams();
         $page = (int)($queryParams['page'] ?? 1);
-        $limit = (int)($queryParams['limit'] ?? 50); // 默认 50 条
+        $limit = min(200, max(1, (int)($queryParams['limit'] ?? 50))); // 默认 50 条，最大 200 条
         $offset = ($page - 1) * $limit;
 
         // 获取总数

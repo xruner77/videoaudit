@@ -554,6 +554,9 @@ async function deleteVideo(id) {
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
 					refreshVideos()
+					resetComments()
+					fetchDashboard()
+					fetchUsers()
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
 				}
@@ -578,6 +581,8 @@ async function deleteComment(id) {
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
 					refreshComments()
+					fetchDashboard()
+					fetchUsers()
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
 				}
@@ -668,6 +673,9 @@ async function deleteUser(id, username) {
 				if (resp.statusCode === 200) {
 					uni.showToast({ title: '已删除', icon: 'success' })
 					fetchUsers()
+					resetVideos()
+					resetComments()
+					fetchDashboard()
 				} else {
 					throw new Error(resp.data?.error || '删除失败')
 				}

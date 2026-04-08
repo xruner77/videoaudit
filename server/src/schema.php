@@ -39,8 +39,8 @@ function initSchema(PDO $db): void
     ");
 
     // 3. 兼容旧视频表字段
-    try { $db->exec("ALTER TABLE videos ADD COLUMN views INT DEFAULT 0"); } catch (\Exception $e) {}
-    try { $db->exec("ALTER TABLE videos ADD COLUMN duration INT DEFAULT 0"); } catch (\Exception $e) {}
+    try { $db->exec("ALTER TABLE videos ADD COLUMN views INT DEFAULT 0"); } catch (\PDOException $e) { if ($e->errorInfo[1] !== 1060) throw $e; }
+    try { $db->exec("ALTER TABLE videos ADD COLUMN duration INT DEFAULT 0"); } catch (\PDOException $e) { if ($e->errorInfo[1] !== 1060) throw $e; }
 
     // 4. 评论表
     $db->exec("
@@ -59,8 +59,8 @@ function initSchema(PDO $db): void
     ");
 
     // 5. 兼容旧评论表字段
-    try { $db->exec("ALTER TABLE comments ADD COLUMN image_url TEXT DEFAULT NULL"); } catch (\Exception $e) {}
-    try { $db->exec("ALTER TABLE comments ADD COLUMN parent_id INT DEFAULT NULL"); } catch (\Exception $e) {}
+    try { $db->exec("ALTER TABLE comments ADD COLUMN image_url TEXT DEFAULT NULL"); } catch (\PDOException $e) { if ($e->errorInfo[1] !== 1060) throw $e; }
+    try { $db->exec("ALTER TABLE comments ADD COLUMN parent_id INT DEFAULT NULL"); } catch (\PDOException $e) { if ($e->errorInfo[1] !== 1060) throw $e; }
 }
 
 /**
