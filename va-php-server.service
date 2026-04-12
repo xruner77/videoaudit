@@ -1,0 +1,17 @@
+[Unit]
+Description=VA PHP Built-in Server (Slim API)
+After=network.target php-fpm-81.service
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/www/wwwroot/va.xruner.tk/server
+ExecStart=/www/server/php/81/bin/php -S 127.0.0.1:8080 -t public/
+Restart=always
+RestartSec=5
+StandardOutput=append:/www/wwwroot/va.xruner.tk/server/php.log
+StandardError=append:/www/wwwroot/va.xruner.tk/server/php.log
+
+[Install]
+WantedBy=multi-user.target
